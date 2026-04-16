@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emers Marketing Ops Dashboard | 營運進度看板</title>
+    <!-- 使用 Tailwind CSS 進行快速樣式設計 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 FontAwesome 圖示 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        
+        /* 拖曳區域的視覺回饋 */
+        .drop-zone { border: 2px dashed #94a3b8; transition: all 0.3s ease; }
+        .drop-zone.dragover { border-color: #3b82f6; background-color: #eff6ff; }
+        
+        /* 狀態標籤的基礎樣式 */
+        .status-badge { @apply px-3 py-1 rounded-full text-xs font-semibold inline-block text-center min-w-[80px]; }
+        .status-stage1 { @apply bg-orange-100 text-orange-800; }
+        .status-stage2 { @apply bg-blue-100 text-blue-800; }
+        .status-stage3 { @apply bg-purple-100 text-purple-800; }
+        .status-stage4 { @apply bg-yellow-100 text-yellow-800; }
+        .status-stage5 { @apply bg-green-100 text-green-800; }
+        .status-error { @apply bg-red-100 text-red-800 border border-red-200; }
+
+        /* Modal 動畫與防止背景滾動 */
+        .modal { transition: opacity 0.25s ease; }
+        body.modal-active { overflow: hidden; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased h-screen flex flex-col">
+
+    <!-- 頂部導覽列 -->
+    <nav class="bg-white shadow-sm border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="bg-blue-600 text-white rounded-lg p-2 mr-3 flex items-center justify-center">
+                        <i class="fas fa-chart-line text-xl"></i>
+                    </div>
+                    <span class="font-bold text-xl tracking-tight text-slate-800">Emers Marketing Ops</span>
+                </div>
+                <div class="flex items-center">
+                    <span id="sync-status" class="text-sm text-slate-500 bg-slate-50 px-3 py-1 rounded-full border border-slate-200">
+                        <i class="fas fa-sync fa-spin mr-1"></i> 系統初始化中...
+                    </span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要內容區 -->
+    <main class="flex-grow p-4 sm:p-6 overflow-auto">
+        <div class="max-w-7xl mx-auto space-y-6">
+            
+            <!-- 數據卡片區 -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-5 hover:shadow-md transition-shadow">
+                    <div class="text-slate-500 text-sm font-medium flex items-center"><i class="fas fa-inbox mr-2 text-orange-400"></i>待處理任務</div>
+                    <div id="active-count" class="text-3xl font-bold text-slate-800 mt-3">--</div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-5 hover:shadow-md transition-shadow">
+                    <div class="text-slate-500 text-sm font-medium flex items-center"><i class="fas fa-file-invoice-dollar mr-2 text-purple-500"></i>財務審核中</div>
+                    <div id="finance-count" class="text-3xl font-bold text-purple-600 mt-3">--</div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-5 hover:shadow-md transition-shadow">
+                    <div class="text-slate-500 text-sm font-medium flex items-center"><i class="fas fa-file-signature mr-2 text-blue-500"></i>委刊單處理中</div>
+                    <div id="io-count" class="text-3xl font-bold text-blue-600 mt-3">--</div>
+                </div>
+                <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-sm border border-blue-100 p-5 hover:shadow-md transition-shadow">
+                    <div class="text-blue-800 text-sm font-medium flex items-center"><i class="fas fa-check-circle mr-2"></i>本月結案項目</div>
+                    <div id="done-count" class="text-3xl font-bold text-blue-900 mt-3">--</div>
+                </div>
+            </div>
+
+            <!-- 控制列與表格區 -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                <!-- 控制列 -->
+                <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-50 gap-4">
+                    <div class="text-sm font-bold text-slate-700 flex items-center">
+                        <i class="fas fa-list-ul mr-2 text-slate-400"></i> 專案追蹤清單
+                    </div>
+                    <button onclick="toggleModal('add-modal')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm flex items-center w-full sm:w-auto justify-center">
+                        <i class="fas fa-plus mr-2"></i> 新增 / 更新項目
+                    </button>
+                </div>
+
+                <!-- 資料表格 -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-white">
+                            <tr>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">建立日期</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">類型 / 廠商</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">標題 / 編號</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">金額與稅務</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">目前進度</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">附件/備註</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-100" id="table-body">
+                            <!-- 資料將透過 API 動態載入 -->
+                            <tr>
+                                <td colspan="6" class="px-6 py-10 text-center text-slate-400">
+                                    <i class="fas fa-circle-notch fa-spin text-2xl mb-3"></i>
+                                    <p>資料載入中，請稍候...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 新增/更新項目的 Modal -->
+    <div id="add-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50 px-4">
+        <!-- 半透明背景 -->
+        <div class="absolute w-full h-full bg-slate-900 opacity-60 backdrop-blur-sm" onclick="toggleModal('add-modal')"></div>
+        
+        <!-- Modal 內容 -->
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="py-4 px-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
+                <h2 class="text-xl font-bold text-slate-800"><i class="fas fa-edit text-blue-600 mr-2"></i>上傳附件與更新進度</h2>
+                <button type="button" class="text-slate-400 hover:text-slate-700 transition-colors p-2 rounded-full hover:bg-slate-100" onclick="toggleModal('add-modal')">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <form id="ops-form" class="p-6 overflow-y-auto space-y-6">
+                <!-- 第一區塊：基本資訊 -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">管理類型 <span class="text-red-500">*</span></label>
+                            <select name="type" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white transition-all" required>
+                                <option value="meta_google">Meta/Google 直投發票</option>
+                                <option value="agency">委外代理商請款</option>
+                                <option value="io">委刊單 (IO) 簽署</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">工單/合約編號 <span class="text-red-500">*</span></label>
+                            <input type="text" name="ticketId" placeholder="例如：2026-04-FB01" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white transition-all" required>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="sm:col-span-1">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">金額</label>
+                            <input type="number" name="amount" placeholder="輸入金額" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">幣別</label>
+                            <select name="currency" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white transition-all">
+                                <option value="TWD">TWD (台幣)</option>
+                                <option value="USD">USD (美金)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">稅務</label>
+                            <select name="tax_type" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white transition-all">
+                                <option value="included">含稅</option>
+                                <option value="excluded">未稅</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 第二區塊：進度狀態 -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">目前進度狀態 <span class="text-red-500">*</span></label>
+                    <select name="status" class="w-full border border-slate-300 rounded-lg p-3 text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white transition-all shadow-sm" required>
+                        <option value="stage1">📥 1. 收到發票 / 待處理</option>
+                        <option value="stage2">🏃 2. 助理跑內部流程中</option>
+                        <option value="stage3">🔎 3. 財務實體審核中</option>
+                        <option value="stage4">⏳ 4. 等待撥款 (遞延期)</option>
+                        <option value="stage5">✅ 5. 已結案 (請務必上傳水單/合約)</option>
+                        <option value="error">⚠️ 異常 / 遭退件需重啟</option>
+                    </select>
+                </div>
+
+                <!-- 第三區塊：附件上傳 -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">上傳歸檔附件 (將自動依月份歸檔至 Google Drive)</label>
+                    <div id="drop-zone" class="drop-zone rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors">
+                        <i class="fas fa-cloud-upload-alt text-4xl text-blue-400 mb-3"></i>
+                        <p class="text-sm font-medium text-slate-700 text-center">點擊選擇檔案，或將檔案拖移至此</p>
+                        <p class="text-xs text-slate-400 mt-1">支援 PDF, JPG, PNG (上限約 10MB)</p>
+                    </div>
+                    <input type="file" id="file-input" class="hidden">
+                    
+                    <!-- 檔案預覽區 -->
+                    <div id="file-preview" class="hidden mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between shadow-sm">
+                        <div class="flex items-center overflow-hidden">
+                            <div class="bg-blue-100 p-2 rounded-lg mr-3">
+                                <i class="fas fa-file-alt text-blue-600 text-xl"></i>
+                            </div>
+                            <span id="file-name" class="text-sm text-blue-900 font-medium truncate max-w-[200px] sm:max-w-xs">filename.pdf</span>
+                        </div>
+                        <button type="button" id="remove-file" class="text-slate-400 hover:text-red-500 transition-colors p-2" title="移除檔案">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 第四區塊：備註 -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">備註說明</label>
+                    <textarea name="notes" rows="2" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white transition-all resize-none" placeholder="輸入退件原因或其他交代事項..."></textarea>
+                </div>
+
+                <!-- 底部按鈕 -->
+                <div class="pt-2 flex justify-end space-x-3 sticky bottom-0 bg-white">
+                    <button type="button" onclick="toggleModal('add-modal')" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">取消</button>
+                    <button type="submit" id="submit-btn" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-md flex items-center">
+                        <i class="fas fa-save mr-2"></i> 儲存並同步至資料庫
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 核心設定：Google Apps Script API 網址
+        // ==========================================
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyB_SNhjLQLqG2PEVEzBBJqanmL9fk4EOL848Tia6OMHB-r3G5y-IcFnXi8YNgKGp4kTQ/exec";
+
+        // ==========================================
+        // 字典對照表 (對應後端傳來的資料)
+        // ==========================================
+        const statusMap = {
+            'stage1': { text: '1. 收到發票/待處理', class: 'status-stage1' },
+            'stage2': { text: '2. 助理執行中', class: 'status-stage2' },
+            'stage3': { text: '3. 財務審核中', class: 'status-stage3' },
+            'stage4': { text: '4. 撥款遞延中', class: 'status-stage4' },
+            'stage5': { text: '5. 已結案', class: 'status-stage5' },
+            'error': { text: '⚠️ 異常/退件', class: 'status-error' }
+        };
+
+        const typeMap = { 
+            'meta_google': '<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-bold mr-1">直投</span> Meta/Google', 
+            'agency': '<span class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-bold mr-1">外包</span> 代理商', 
+            'io': '<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold mr-1">文件</span> 委刊單' 
+        };
+
+        // ==========================================
+        // 1. 抓取資料與畫面渲染
+        // ==========================================
+        async function fetchDashboardData() {
+            const statusEl = document.getElementById('sync-status');
+            statusEl.innerHTML = '<i class="fas fa-sync fa-spin mr-1"></i> 同步中...';
+            statusEl.classList.add('bg-blue-50', 'text-blue-600', 'border-blue-200');
+            
+            try {
+                const response = await fetch(GAS_URL);
+                const data = await response.json();
+                
+                // 渲染表格 (將最新的資料放在最上面)
+                renderTable(data);
+                // 更新上方統計數字
+                updateStats(data);
+                
+                // 更新同步狀態
+                const now = new Date();
+                const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+                statusEl.innerHTML = `<i class="fas fa-check-circle mr-1 text-green-500"></i> 最後同步：${timeStr}`;
+                statusEl.classList.remove('bg-blue-50', 'text-blue-600', 'border-blue-200');
+                statusEl.classList.add('bg-slate-50', 'text-slate-600');
+            } catch (err) {
+                console.error("Fetch Error:", err);
+                statusEl.innerHTML = '<i class="fas fa-exclamation-circle mr-1 text-red-500"></i> 同步失敗，請檢查網路';
+            }
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('table-body');
+            
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-slate-500">目前尚無任何追蹤項目</td></tr>`;
+                return;
+            }
+
+            // 反轉陣列，讓最新建立的項目排在上方
+            const reversedData = [...data].reverse();
+
+            tbody.innerHTML = reversedData.map(row => {
+                // 處理日期格式 (只取 YYYY-MM-DD)
+                const dateObj = new Date(row.date);
+                const dateStr = !isNaN(dateObj) ? `${dateObj.getFullYear()}-${(dateObj.getMonth()+1).toString().padStart(2,'0')}-${dateObj.getDate().toString().padStart(2,'0')}` : row.date;
+                
+                // 處理狀態樣式
+                const statusInfo = statusMap[row.status] || { text: row.status, class: 'bg-slate-100 text-slate-800' };
+                
+                // 處理附件連結 (可能是單個，也可能是用 " | " 隔開的多個附件)
+                let attachmentHtml = '<span class="text-slate-300 text-xs italic">尚無附件</span>';
+                if (row.fileUrl && row.fileUrl !== '無附件') {
+                    const urls = row.fileUrl.split(' | ');
+                    attachmentHtml = urls.map((url, index) => 
+                        `<a href="${url}" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline flex items-center text-xs mt-1 transition-colors"><i class="fas fa-external-link-alt mr-1"></i> 附件 ${index + 1}</a>`
+                    ).join('');
+                }
+
+                // 若是魔法標籤且沒有編號，給予醒目提示
+                const isWarning = row.ticketId && row.ticketId.includes('⚠️');
+                const rowClass = isWarning ? 'bg-orange-50/50 hover:bg-orange-50 transition-colors' : 'hover:bg-slate-50 transition-colors';
+
+                return `
+                <tr class="${rowClass}">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${dateStr}</td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm font-medium text-slate-900 mb-1">${typeMap[row.type] || row.type}</div>
+                        <div class="text-xs text-slate-400 flex items-center"><i class="fas fa-robot mr-1 opacity-70"></i> ${row.source || '系統'}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm text-slate-900 font-medium ${isWarning ? 'text-orange-600' : ''}">${row.ticketId}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700">${row.amount || '--'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="status-badge ${statusInfo.class}">${statusInfo.text}</span>
+                    </td>
+                    <td class="px-6 py-4 max-w-[200px]">
+                        <div class="mb-1">${attachmentHtml}</div>
+                        <div class="text-xs text-slate-500 truncate" title="${row.notes || ''}">${row.notes || ''}</div>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        function updateStats(data) {
+            document.getElementById('active-count').innerText = data.filter(d => d.status === 'stage1' || d.status === 'stage2').length;
+            document.getElementById('finance-count').innerText = data.filter(d => d.status === 'stage3').length;
+            document.getElementById('io-count').innerText = data.filter(d => d.type === 'io' && d.status !== 'stage5').length;
+            document.getElementById('done-count').innerText = data.filter(d => d.status === 'stage5').length;
+        }
+
+        // ==========================================
+        // 2. 表單提交與檔案上傳 (POST)
+        // ==========================================
+        document.getElementById('ops-form').onsubmit = async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submit-btn');
+            const originalBtnHtml = btn.innerHTML;
+            
+            // 防止重複點擊
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> 上傳與寫入中...';
+            btn.classList.add('opacity-80', 'cursor-not-allowed');
+
+            // 收集表單資料
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            
+            // 如果有選擇檔案，加入 Base64 資料
+            if (currentFile && base64String) {
+                data.fileData = base64String;
+                data.fileName = currentFile.name;
+                data.mimeType = currentFile.type;
+            }
+
+            try {
+                // 使用 URLSearchParams 將資料轉為 x-www-form-urlencoded 格式送給 GAS
+                const params = new URLSearchParams(data).toString();
+                
+                // 發送請求 (GAS 跨域 POST 常用 no-cors，但此處我們已經在後端設定了允許，可以直接 fetch)
+                await fetch(GAS_URL, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
+                    body: params 
+                });
+                
+                // 成功後的 UI 回饋
+                btn.innerHTML = '<i class="fas fa-check mr-2"></i> 成功！';
+                btn.classList.remove('bg-blue-600');
+                btn.classList.add('bg-green-600');
+                
+                setTimeout(() => {
+                    toggleModal('add-modal');
+                    this.reset();
+                    removeFile();
+                    // 上傳完成後，主動觸發一次畫面更新抓取新資料
+                    fetchDashboardData();
+                    
+                    // 恢復按鈕預設樣式
+                    btn.disabled = false;
+                    btn.innerHTML = originalBtnHtml;
+                    btn.classList.remove('bg-green-600', 'opacity-80', 'cursor-not-allowed');
+                    btn.classList.add('bg-blue-600');
+                }, 1000);
+
+            } catch (err) {
+                console.error('上傳失敗:', err);
+                alert('發生錯誤，請稍後再試。若持續失敗請檢查網路連線。');
+                btn.disabled = false;
+                btn.innerHTML = originalBtnHtml;
+                btn.classList.remove('opacity-80', 'cursor-not-allowed');
+            }
+        };
+
+        // ==========================================
+        // 3. 檔案拖曳與預覽邏輯
+        // ==========================================
+        let currentFile = null; 
+        let base64String = "";
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+
+        // 點擊觸發檔案選擇
+        dropZone.onclick = () => fileInput.click();
+        
+        // 拖曳事件處理
+        dropZone.ondragover = (e) => { 
+            e.preventDefault(); 
+            dropZone.classList.add('dragover'); 
+        };
+        dropZone.ondragleave = () => { 
+            dropZone.classList.remove('dragover'); 
+        };
+        dropZone.ondrop = (e) => { 
+            e.preventDefault(); 
+            dropZone.classList.remove('dragover'); 
+            handleFiles(e.dataTransfer.files); 
+        };
+        
+        // 傳統檔案選擇處理
+        fileInput.onchange = (e) => handleFiles(e.target.files);
+
+        // 讀取檔案轉為 Base64
+        function handleFiles(files) {
+            if (!files[0]) return;
+            
+            // 簡易檔案大小限制檢查 (例如 10MB)
+            if (files[0].size > 10 * 1024 * 1024) {
+                alert("檔案太大了！請上傳小於 10MB 的檔案。");
+                return;
+            }
+
+            currentFile = files[0];
+            document.getElementById('file-name').innerText = currentFile.name;
+            document.getElementById('file-preview').classList.remove('hidden');
+            dropZone.classList.add('hidden');
+            
+            const reader = new FileReader();
+            reader.onload = (e) => base64String = e.target.result;
+            reader.readAsDataURL(currentFile);
+        }
+
+        // 移除已選檔案
+        function removeFile() {
+            currentFile = null; 
+            base64String = "";
+            document.getElementById('file-preview').classList.add('hidden');
+            dropZone.classList.remove('hidden');
+            fileInput.value = "";
+        }
+        document.getElementById('remove-file').onclick = (e) => {
+            e.stopPropagation(); // 避免觸發上層的點擊事件
+            removeFile();
+        };
+
+        // ==========================================
+        // 4. Modal 切換邏輯
+        // ==========================================
+        function toggleModal(id) {
+            const modal = document.getElementById(id);
+            modal.classList.toggle('opacity-0');
+            modal.classList.toggle('pointer-events-none');
+            document.body.classList.toggle('modal-active');
+        }
+
+        // ==========================================
+        // 5. 初始化與定時輪詢 (Polling)
+        // ==========================================
+        // 網頁載入完成後立即抓取一次資料
+        window.addEventListener('DOMContentLoaded', fetchDashboardData);
+        
+        // 每 5 分鐘 (300,000 毫秒) 在背景自動重新抓取一次資料
+        setInterval(fetchDashboardData, 300000); 
+
+    </script>
+</body>
+</html>
