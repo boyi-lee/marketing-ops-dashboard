@@ -1,341 +1,1748 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emers Marketing Ops Dashboard | 營運進度看板</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        
-        /* 狀態標籤樣式 */
-        .status-badge { @apply px-3 py-1 rounded-full text-xs font-bold inline-block text-center min-w-[90px] shadow-sm; }
-        .status-stage1 { @apply bg-orange-100 text-orange-800 border border-orange-200; }
-        .status-stage2 { @apply bg-blue-100 text-blue-800 border border-blue-200; }
-        .status-stage3 { @apply bg-purple-100 text-purple-800 border border-purple-200; }
-        .status-stage4 { @apply bg-yellow-100 text-yellow-800 border border-yellow-200; }
-        .status-stage5 { @apply bg-green-100 text-green-800 border border-green-200; }
-        .status-error { @apply bg-red-100 text-red-800 border border-red-200; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emers — Ad & Revenue Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,600;1,9..40,700&family=DM+Mono:wght@400;500;600&display=swap');
 
-        /* 修正備註欄位：完全不截斷文字，自動換行顯示所有細節 */
-        .notes-container { 
-            white-space: pre-wrap;
-            word-break: break-word;
-            font-size: 0.8rem;
-            line-height: 1.5;
-            color: #475569;
-        }
+/* --- APPLE DESIGN SYSTEM TOKENS --- */
+:root {
+  --ink: #1d1d1f;         /* Apple San Francisco Black */
+  --ink2: #424245;
+  --ink3: #86868b;        /* System Gray */
+  --ink4: #d2d2d7;
+  --paper: #f5f5f7;       /* System Background */
+  --paper2: #ffffff;
+  --paper3: #e5e5ea;
+  --rule: rgba(0,0,0,0.05);
+  --rule2: #d2d2d7;
+  
+  /* Apple Blue Palette */
+  --accent: #0066cc;      
+  --accent2: #004499;     
+  --accent-l: #eef6ff;    
+  --accent-m: #0066cc;    
+  --accent-navy: #1d1d1f; /* 改變為深色系標籤 */
+  
+  /* System Status Colors */
+  --ok: #34c759;
+  --ok-bg: #e5f9e7;
+  --warn: #ff9f0a;
+  --warn-bg: #fff5e5;
+  --red: #ff3b30;
+  --red-bg: #ffeceb;
+  
+  --r: 12px;
+  --r2: 24px;
+  --blur: blur(25px) saturate(180%);
+  --shadow-soft: 0 10px 30px rgba(0,0,0,0.04), 0 2px 10px rgba(0,0,0,0.02);
+  --shadow-hover: 0 20px 40px rgba(0,0,0,0.08);
+}
 
-        .drop-zone { border: 2px dashed #94a3b8; transition: all 0.3s ease; }
-        .drop-zone.dragover { border-color: #3b82f6; background-color: #eff6ff; }
-        .modal { transition: opacity 0.25s ease; }
-        body.modal-active { overflow: hidden; }
-    </style>
+*{box-sizing:border-box;margin:0;padding:0; -webkit-tap-highlight-color: transparent;}
+body{background:var(--paper);color:var(--ink);font-family:'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;font-size:13px;line-height:1.55;min-height:100vh;overflow-x:hidden;}
+
+/* ── 強制防護：高對比 Tooltip ── */
+[data-tip]{position:relative;cursor:help}
+[data-tip]::after{
+  content:attr(data-tip);
+  position:absolute;
+  bottom:calc(100% + 8px);
+  left:50%;
+  transform:translateX(-50%);
+  background-color:rgba(0,0,0,0.85) !important; 
+  backdrop-filter: blur(10px);
+  color:#ffffff !important;            
+  font-size:12px !important;
+  font-weight:500 !important;
+  padding:8px 12px !important;
+  border-radius:8px !important;
+  pointer-events:none;
+  opacity:0;
+  transition:all .2s ease;
+  z-index:9999;
+  max-width:250px;
+  white-space:normal;
+  text-align:center;
+  line-height:1.5;
+  box-shadow:0 4px 12px rgba(0,0,0,0.15) !important;
+}
+[data-tip]::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px 6px 0;
+  border-style: solid;
+  border-color: rgba(0,0,0,0.85) transparent transparent transparent !important; 
+  opacity: 0;
+  transition: all .2s ease;
+  z-index: 9999;
+}
+[data-tip]:hover::after, [data-tip]:hover::before{
+  opacity:1;
+  bottom: calc(100% + 12px);
+}
+[data-tip]:hover::before{
+  bottom: calc(100% + 6px);
+}
+
+/* --- GLASSMORPHISM HEADER --- */
+header{background:rgba(255,255,255,0.8);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--rule);padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:none;}
+.wm{display:flex;align-items:baseline;gap:9px}
+.wm-n{font-size:19px;font-weight:700;letter-spacing:-.4px;color:var(--ink)}
+.wm-d{color:var(--ink4);font-weight:300}
+.wm-s{font-size:13px;color:var(--ink3);font-weight:500}
+.hdr-r{display:flex;align-items:center;gap:12px}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--ok);animation:breathe 3s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.3}}
+.sts{font-size:11px;color:var(--ink3);font-family:'DM Mono',monospace}
+
+/* APPLE STYLE BUTTONS */
+.btn{font-family:inherit;font-size:13px;font-weight:600;padding:8px 18px;border-radius:20px;border:none;background:rgba(0,0,0,0.05);color:var(--ink);cursor:pointer;transition:all .25s cubic-bezier(0.4, 0, 0.2, 1);}
+.btn:hover{background:rgba(0,0,0,0.08);transform:scale(1.02);}
+.btn.pri{background:var(--accent);color:#fff}
+.btn.pri:hover{background:var(--accent2);box-shadow:0 4px 12px rgba(0,102,204,0.3);}
+
+#sbar{display:none;padding:12px 32px;font-size:13px;align-items:center;gap:8px;font-weight:600;}
+#sbar.loading{display:flex;background:var(--accent-l);color:var(--accent-m)}
+#sbar.error{display:flex;background:var(--red-bg);color:var(--red)}
+#sbar.ok{display:flex;background:var(--ok-bg);color:var(--ok)}
+
+/* GLASSMORPHISM FILTER BAR */
+.ctrlbar{background:rgba(255,255,255,0.8);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--rule);padding:16px 32px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;position:sticky;top:64px;z-index:90;}
+.cg{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cl{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--ink3);white-space:nowrap}
+
+#dynamic-warning-bar{display:none; background:var(--warn-bg); color:var(--warn); padding:12px 32px; font-size:13px; font-weight:600; border-bottom:1px solid rgba(0,0,0,0.05); line-height:1.6;}
+
+/* APPLE STYLE CHIPS */
+.chip{
+  font-size:13px;
+  padding:6px 16px;
+  border-radius:20px;
+  border:1px solid transparent !important;
+  background-color:rgba(0,0,0,0.04) !important;
+  color:var(--ink2) !important;
+  cursor:pointer;
+  transition:all .2s;
+  white-space:nowrap;
+  font-weight:600;
+  outline:none;
+}
+.chip:hover{background-color:rgba(0,0,0,0.08) !important;}
+.chip.on{
+  background-color:var(--accent-navy) !important; 
+  color:#ffffff !important;            
+  box-shadow:0 4px 12px rgba(0,0,0,0.1) !important;
+}
+
+.cdiv{width:1px;height:24px;background:var(--rule);flex-shrink:0}
+.custom-range{display:none;align-items:center;gap:6px}
+.custom-range.show{display:flex}
+.custom-range input{font-family:inherit;font-size:13px;background:#fff;border:1px solid var(--rule2);color:var(--ink);border-radius:var(--r);padding:6px 12px;outline:none;transition:border-color .2s;font-weight:500}
+.custom-range input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-l)}
+.cnote{font-size:11px;color:var(--ink4);font-style:italic}
+
+main{padding:32px;max-width:1500px;margin: 0 auto;animation: fadeIn 0.6s ease-out;}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.sec{display:flex;align-items:center;gap:16px;margin:40px 0 20px}
+.sec:first-child{margin-top:0}
+.sec-n{font-size:13px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink3);white-space:nowrap}
+.sec-r{flex:1;height:1px;background:var(--ink4);opacity:0.3;}
+
+/* SOFT SHADOW CARDS */
+.roi-hero{background:#fff;border:none;border-radius:var(--r2);padding:40px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;box-shadow:var(--shadow-soft);transition:transform 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s;}
+.roi-hero:hover{transform:translateY(-2px);box-shadow:var(--shadow-hover);}
+.roi-hero-left{display:flex;align-items:baseline;gap:24px;flex-wrap:wrap}
+.roi-big{font-size:72px;font-weight:700;letter-spacing:-3px;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums;display:flex;align-items:baseline}
+.roi-big.warn{color:var(--warn)}
+.roi-big.bad{color:var(--red)}
+.roi-label{font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink3);align-self:flex-end;padding-bottom:12px}
+.roi-meta{display:flex;flex-direction:column;gap:6px;align-self:flex-end;padding-bottom:12px;border-left:1px solid var(--rule);padding-left:24px;}
+.roi-meta span{font-size:14px;color:var(--ink3);font-weight:500}
+.roi-meta strong{color:var(--ink);font-weight:700;font-size:16px;display:inline-flex;align-items:baseline}
+.roi-right{display:flex;gap:32px;flex-wrap:wrap}
+.roi-mini{display:flex;flex-direction:column;gap:6px;min-width:100px;text-align:right;}
+.roi-mini-label{font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--ink3)}
+.roi-mini-val{font-size:28px;font-weight:700;letter-spacing:-0.5px;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;justify-content:flex-end;color:var(--ink)}
+
+/* KPI TIERS */
+.tier1{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px;margin-bottom:24px}
+.tier3{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:24px;margin-bottom:24px}
+.kcard{background:#fff;border:none;border-radius:var(--r2);padding:28px;transition:transform 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s;box-shadow:var(--shadow-soft); display:flex; flex-direction:column;}
+.kcard:hover{transform:translateY(-4px);box-shadow:var(--shadow-hover);}
+.kl{font-size:12px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--ink3);margin-bottom:14px}
+.kv{font-size:32px;font-weight:700;letter-spacing:-1px;line-height:1;margin-bottom:8px;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;color:var(--ink)}
+.kv.ac{color:var(--accent-m);}
+.kv.rd{color:var(--red)}
+.ks{font-size:12px;color:var(--ink3);font-weight:500}
+.up{color:var(--ok)}.dn{color:var(--red)}.nt{color:var(--ink4)}
+
+/* KPI PROGRESS BAR */
+.kpi-prog-wrap { width: 100%; height: 8px; background: var(--paper); border-radius: 4px; margin-top: 16px; overflow: hidden; }
+.kpi-prog-fill { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
+.kpi-prog-text { font-size: 12px; color: var(--ink3); margin-top: 8px; display: flex; justify-content: space-between; align-items:center; font-weight:600;}
+
+/* CHART GRID */
+.row2{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:24px;margin-bottom:24px}
+.row3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-bottom:24px}
+.card{background:#fff;border:none;border-radius:var(--r2);padding:32px;box-shadow:var(--shadow-soft);transition:transform 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s;}
+.card:hover{box-shadow:var(--shadow-hover);}
+.ct{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.ct-n{font-size:15px;font-weight:700;color:var(--ink)}
+.ct-b{font-size:11px;font-weight:700;padding:4px 12px;border-radius:12px}
+.ct-b.g{background:var(--accent-l);color:var(--accent-m)}
+.ct-b.n{background:var(--paper3);color:var(--ink2)}
+.cw{position:relative;width:100%}
+.legr{display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+.leg{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink2);font-weight:600}
+.leg-sq{width:12px;height:12px;border-radius:4px;flex-shrink:0}
+.leg-line{width:20px;height:4px;border-radius:2px;flex-shrink:0}
+
+/* ROI BARS */
+.roi-list{display:flex;flex-direction:column;gap:12px}
+.roi-row{display:grid;grid-template-columns:95px 1fr 70px;align-items:center;gap:12px}
+.roi-b{font-size:13px;color:var(--ink);font-weight:700;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;justify-content:flex-end;align-items:center;gap:4px;}
+.roi-track{height:8px;background:var(--paper);border-radius:4px;overflow:hidden}
+.roi-fill{height:100%;border-radius:4px;transition:width 1s cubic-bezier(.4,0,.2,1)}
+.roi-v{font-size:14px;font-weight:700;text-align:right;font-family:'DM Mono',monospace; display:flex; align-items:center; justify-content:flex-end;}
+
+/* SUMMARY ROW */
+.sum-row{display:flex;gap:20px;padding:16px 0 4px;border-top:1px solid var(--rule);margin-top:20px;flex-wrap:wrap}
+.sum-item{font-size:13px;color:var(--ink3);font-weight:500}
+.sum-item strong{color:var(--ink);font-weight:700}
+
+/* TABLE (Apple Style) */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--r);background:#fff;}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+thead th{text-align:left;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--ink3);padding:16px 18px;border-bottom:1px solid var(--rule2);white-space:nowrap;cursor:pointer;user-select:none;transition:color .2s;background:#fff;position:sticky;top:0;z-index:10;}
+thead th:first-child{position:sticky;left:0;z-index:20;box-shadow:2px 0 4px rgba(0,0,0,0.03)}
+thead th:hover{color:var(--accent)}
+thead th.sa::after{content:' ↑';color:var(--accent-m)}
+thead th.sd::after{content:' ↓';color:var(--accent-m)}
+tbody td{padding:16px 18px;border-bottom:1px solid var(--rule);white-space:nowrap;color:var(--ink2);font-weight:500}
+tbody td:first-child{position:sticky;left:0;background:#fff;z-index:5;box-shadow:2px 0 4px rgba(0,0,0,0.03)}
+tbody tr:hover td{background:var(--paper)}
+tbody tr:hover td:first-child{background:var(--paper)}
+tbody tr:last-child td{border-bottom:none}
+tfoot td{padding:18px 18px;border-top:2px solid var(--ink4);background:var(--paper);font-weight:700;color:var(--ink);white-space:nowrap}
+tfoot td:first-child{position:sticky;left:0;z-index:5;box-shadow:2px 0 4px rgba(0,0,0,0.03)}
+.tag{font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;display:inline-block}
+.tm{background:var(--accent-l);color:var(--accent-m)}
+.tg{background:var(--paper);color:var(--ink2)}
+.tok{background:var(--ok-bg);color:var(--ok)}
+.twarn{background:var(--warn-bg);color:var(--warn)}
+.tbad{background:var(--red-bg);color:var(--red)}
+.num{font-family:'DM Mono',monospace;font-variant-numeric:tabular-nums;color:var(--ink)}
+
+/* TABLE DIMENSION TOGGLE */
+.dim-toggle{display:flex;gap:8px;margin-bottom:16px}
+.dim-btn{font-size:12px;font-weight:600;padding:6px 16px;border-radius:20px;border:none;background:rgba(0,0,0,0.04);color:var(--ink2);cursor:pointer;transition:all .15s}
+.dim-btn:hover{background:rgba(0,0,0,0.08);color:var(--ink)}
+.dim-btn.on{background:var(--accent-navy);color:#fff;}
+
+footer{margin-top:40px;padding:32px;border-top:1px solid var(--rule);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.ft-c{font-size:13px;color:var(--ink3);font-weight:600;}
+.ft-t{font-size:13px;font-family:'DM Mono',monospace;color:var(--ink4);text-align:right;font-weight:500}
+
+/* MODAL */
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);backdrop-filter:blur(8px);z-index:9999;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;}
+.modal.show{display:flex;opacity:1;}
+.modal-box{background:#fff;border-radius:var(--r2);width:90%;max-width:540px;display:flex;flex-direction:column;box-shadow:0 30px 60px rgba(0,0,0,0.2);overflow:hidden; max-height: 90vh;}
+.modal-header{padding:24px 32px;border-bottom:1px solid var(--rule);display:flex;justify-content:space-between;align-items:center;background:var(--paper);color:var(--ink);}
+.modal-title{font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.modal-close{background:transparent;border:none;font-size:28px;color:var(--ink3);cursor:pointer;line-height:1;transition:color .2s;}
+.modal-close:hover{color:var(--ink);}
+.modal-content{padding:32px;display:flex;flex-direction:column;gap:24px; overflow-y:auto;}
+.form-group{display:flex;flex-direction:column;gap:10px;}
+.form-group label{font-size:13px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px;}
+.form-group input{font-family:inherit;font-size:14px;padding:12px 16px;border:1px solid var(--rule2);border-radius:var(--r);background:#fff;color:var(--ink);outline:none;transition:all 0.2s;font-weight:500; width:100%;}
+.form-group input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-l);}
+.modal-footer{padding:20px 32px;border-top:1px solid var(--rule);display:flex;justify-content:flex-end;gap:12px;background:var(--paper);}
+
+/* --- RESPONSIVE DESIGN (RWD) --- */
+@media(max-width:1180px){
+  .tier1{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tier3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .row2, .row3{grid-template-columns:1fr}
+}
+@media(max-width:768px){
+  main, header, .ctrlbar, footer{padding-left:24px;padding-right:24px}
+  .ctrlbar{gap:12px;}
+  .cdiv{display:none;}
+  .roi-big{font-size:48px}
+  .tier3{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:480px){
+  main, header, .ctrlbar, footer{padding-left:20px;padding-right:20px}
+  .wm-n{font-size:16px}
+  .hdr-r{gap:8px}
+  .roi-hero{padding:24px;}
+  .roi-hero-left{gap:16px;}
+  .roi-big{font-size:44px}
+  .roi-right{width:100%;justify-content:space-between;padding-top:20px;border-top:1px solid var(--rule);margin-top:12px}
+  .roi-mini{min-width:auto;align-items:center;text-align:center;}
+  .roi-mini-val{font-size:22px;}
+  .tier1, .tier3{grid-template-columns:1fr; gap:16px;}
+  .kcard{padding:20px;}
+  .kv{font-size:28px;}
+  .cg{width:100%;}
+  .cg .cl{width:100%;margin-bottom:6px;}
+  .sum-row{flex-direction:column;gap:12px;}
+}
+</style>
 </head>
-<body class="text-slate-800 antialiased h-screen flex flex-col">
+<body>
 
-    <nav class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-30">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16 items-center">
-                <div class="flex items-center">
-                    <div class="bg-blue-600 text-white rounded-lg p-2 mr-3 flex items-center justify-center">
-                        <i class="fas fa-chart-line text-xl"></i>
-                    </div>
-                    <span class="font-bold text-xl tracking-tight text-slate-800">Emers Marketing Ops</span>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <span id="sync-status" class="text-xs font-medium text-slate-500 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
-                        <i class="fas fa-sync fa-spin mr-1 text-blue-400"></i> 同步中...
-                    </span>
-                </div>
-            </div>
-        </div>
-    </nav>
+<header>
+  <div class="wm">
+    <span class="wm-n">Emers</span>
+    <span class="wm-d">/</span>
+    <span class="wm-s">Ad &amp; Revenue Report</span>
+  </div>
+  <div class="hdr-r">
+    <div class="sdot"></div>
+    <span class="sts" id="last-upd">—</span>
+    <button class="btn" onclick="openSettings()">⚙️ Data Sources</button>
+    <button class="btn" onclick="openKpiSettings()">🎯 設定 KPI</button>
+    <button class="btn pri" onclick="loadData()">Sync Data</button>
+  </div>
+</header>
 
-    <main class="flex-grow p-4 sm:p-6 overflow-auto">
-        <div class="max-w-7xl mx-auto space-y-6">
-            
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
-                    <div class="text-slate-400 text-xs font-bold uppercase">待處理</div>
-                    <div id="active-count" class="text-2xl font-bold text-slate-800 mt-1">--</div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
-                    <div class="text-slate-400 text-xs font-bold uppercase">財務審核</div>
-                    <div id="finance-count" class="text-2xl font-bold text-purple-600 mt-1">--</div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
-                    <div class="text-slate-400 text-xs font-bold uppercase">委刊單處理</div>
-                    <div id="io-count" class="text-2xl font-bold text-blue-600 mt-1">--</div>
-                </div>
-                <div class="bg-green-50 rounded-xl shadow-sm border border-green-100 p-4">
-                    <div class="text-green-600 text-xs font-bold uppercase">本月結案</div>
-                    <div id="done-count" class="text-2xl font-bold text-green-700 mt-1">--</div>
-                </div>
-            </div>
+<div id="sbar"></div>
+<!-- 動態防呆提示列 -->
+<div id="dynamic-warning-bar"></div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
-                    <h2 class="text-sm font-bold text-slate-700 flex items-center">
-                        <i class="fas fa-tasks mr-2 text-slate-400"></i> 專案追蹤清單
-                    </h2>
-                    <button onclick="resetAndOpenModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all flex items-center">
-                        <i class="fas fa-plus mr-2"></i> 新增項目
-                    </button>
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-slate-200 table-fixed">
-                        <thead class="bg-slate-50 text-xs text-slate-500 uppercase font-bold">
-                            <tr>
-                                <th class="w-28 px-6 py-4 text-left">建立日期</th>
-                                <th class="w-32 px-6 py-4 text-left">類型 / 廠商</th>
-                                <th class="w-64 px-6 py-4 text-left">標題 / 編號</th>
-                                <th class="w-28 px-6 py-4 text-left">金額</th>
-                                <th class="w-36 px-6 py-4 text-left">進度</th>
-                                <th class="px-6 py-4 text-left">雲端附件與備註細節</th>
-                                <th class="w-24 px-6 py-4 text-right">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-slate-100 text-sm" id="table-body">
-                            <tr><td colspan="7" class="px-6 py-12 text-center text-slate-400"><i class="fas fa-spinner fa-spin mr-2"></i> 資料讀取中...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <div id="add-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50 px-4">
-        <div class="absolute w-full h-full bg-slate-900/60 backdrop-blur-sm" onclick="toggleModal('add-modal')"></div>
-        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[90vh]">
-            <div class="py-4 px-6 border-b flex justify-between items-center bg-white sticky top-0 z-10">
-                <h2 id="modal-title" class="text-xl font-bold text-slate-800">管理項目</h2>
-                <button type="button" onclick="toggleModal('add-modal')" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
-            </div>
-            <form id="ops-form" class="p-6 overflow-y-auto space-y-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">管理類型</label>
-                        <select name="type" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                            <option value="meta_google">Meta/Google 直投</option>
-                            <option value="agency">委外代理商</option>
-                            <option value="io">委刊單 (IO)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">編號/項目</label>
-                        <input type="text" name="ticketId" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" required>
-                    </div>
-                </div>
-                <div class="grid grid-cols-3 gap-4">
-                    <input type="number" name="amount" placeholder="金額" class="border rounded-lg p-2 text-sm">
-                    <select name="currency" class="border rounded-lg p-2 text-sm"><option value="TWD">TWD</option><option value="USD">USD</option></select>
-                    <select name="tax_type" class="border rounded-lg p-2 text-sm"><option value="included">含稅</option><option value="excluded">未稅</option></select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">進度更新</label>
-                    <select name="status" class="w-full border rounded-lg p-2.5 text-sm font-bold text-slate-700 bg-slate-50">
-                        <option value="stage1">1. 收到發票 / 待處理</option>
-                        <option value="stage2">2. 助理跑內部流程中</option>
-                        <option value="stage3">3. 財務實體審核中</option>
-                        <option value="stage4">4. 等待撥款 (遞延期)</option>
-                        <option value="stage5">5. 已結案 (請傳附件)</option>
-                        <option value="error">⚠️ 異常 / 退件</option>
-                    </select>
-                </div>
-                <div>
-                    <div id="drop-zone" class="drop-zone rounded-xl p-8 flex flex-col items-center justify-center bg-slate-50 hover:bg-blue-50 cursor-pointer">
-                        <i class="fas fa-cloud-upload-alt text-3xl text-blue-400 mb-2"></i>
-                        <p class="text-sm font-medium">拖移檔案上傳，系統將自動依月份歸檔</p>
-                    </div>
-                    <input type="file" id="file-input" class="hidden">
-                    <div id="file-preview" class="hidden mt-2 p-3 bg-blue-50 border border-blue-100 rounded-lg flex justify-between items-center">
-                        <span id="file-name" class="text-xs font-bold text-blue-700 truncate"></span>
-                        <i class="fas fa-times text-slate-400 cursor-pointer hover:text-red-500" id="remove-file"></i>
-                    </div>
-                </div>
-                <textarea name="notes" rows="3" class="w-full border rounded-lg p-2.5 text-sm" placeholder="備註細節..."></textarea>
-                <div class="pt-4 flex justify-end space-x-3 bg-white border-t border-slate-100 mt-4">
-                    <button type="button" onclick="toggleModal('add-modal')" class="px-5 py-2 border rounded-lg text-sm font-bold text-slate-500">取消</button>
-                    <button type="submit" id="submit-btn" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700">儲存變更</button>
-                </div>
-            </form>
-        </div>
+<div class="ctrlbar">
+  <div class="cg">
+    <span class="cl">Period</span>
+    <button class="chip" data-t="1"      onclick="setTime('1',this)">Yesterday</button>
+    <button class="chip on" data-t="7"   onclick="setTime('7',this)">7 days</button>
+    <button class="chip" data-t="30"     onclick="setTime('30',this)">30 days</button>
+    <button class="chip" data-t="90"     onclick="setTime('90',this)">90 days</button>
+    <!-- 新增 This Month 按鈕 -->
+    <button class="chip" data-t="thisMonth" onclick="setTime('thisMonth',this)">This Month</button>
+    <button class="chip" data-t="custom" onclick="setTime('custom',this)">Custom</button>
+    <div class="custom-range" id="cr">
+      <input type="date" id="df" onchange="applyCustom()">
+      <span style="color:var(--ink3);font-size:11px">–</span>
+      <input type="date" id="dt" onchange="applyCustom()">
     </div>
+  </div>
+  <div class="cdiv"></div>
+  <div class="cg">
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;user-select:none;padding-right:4px">
+      <input type="checkbox" id="chk-compare" onchange="setCompare(this.checked)" style="accent-color:var(--accent-m);width:16px;height:16px;">
+      <span>與前一期比較</span>
+    </label>
+  </div>
+  <div class="cdiv"></div>
+  <!-- 動態多選綁定 -->
+  <div class="cg" id="market-filters">
+    <span class="cl">Market</span>
+    <button class="chip on" data-c="all" onclick="toggleC('all')">All</button>
+    <button class="chip" data-c="TW" onclick="toggleC('TW')">TW</button>
+    <button class="chip" data-c="HK" onclick="toggleC('HK')">HK</button>
+    <button class="chip" data-c="SG" onclick="toggleC('SG')">SG</button>
+    <button class="chip" data-c="MY" onclick="toggleC('MY')">MY</button>
+    <span class="cnote">* 確保 Sales 表內含「國家」欄位以啟用過濾</span>
+  </div>
+  <div class="cdiv"></div>
+  <!-- 動態多選綁定 -->
+  <div class="cg" id="brand-filters">
+    <span class="cl">Brand</span>
+    <button class="chip on" data-b="all" onclick="toggleB('all')">All</button>
+    <button class="chip" data-b="Descente" onclick="toggleB('Descente')">Descente</button>
+    <button class="chip" data-b="ASH GOLF" onclick="toggleB('ASH GOLF')">ASH GOLF</button>
+    <button class="chip" data-b="G/FORE" onclick="toggleB('G/FORE')">G/FORE</button>
+    <button class="chip" data-b="Callaway" onclick="toggleB('Callaway')">Callaway</button>
+    <button class="chip" data-b="2XU TW" onclick="toggleB('2XU TW')">2XU TW</button>
+    <button class="chip" data-b="2XU HK" onclick="toggleB('2XU HK')">2XU HK</button>
+    <button class="chip" data-b="K-SWISS" onclick="toggleB('K-SWISS')">K-SWISS</button>
+    <button class="chip" data-b="Palladium" onclick="toggleB('Palladium')">Palladium</button>
+  </div>
+</div>
 
-    <script>
-        // ==========================================
-        // 核心設定：請確保此網址與您的 GAS 部署網址一致
-        // ==========================================
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyB_SNhjLQLqG2PEVEzBBJqanmL9fk4EOL848Tia6OMHB-r3G5y-IcFnXi8YNgKGp4kTQ/exec";
+<main>
 
-        window.dashboardData = [];
+<!-- ROI HERO -->
+<div class="sec" style="margin-top:0"><span class="sec-n">ROI Overview</span><div class="sec-r"></div></div>
+<div class="roi-hero">
+  <div class="roi-hero-left">
+    <div>
+      <div class="roi-label" data-tip="Net Revenue ÷ Total Ad Spend. &gt;5 = Good, 2–5 = Review, &lt;2 = Stop">ROI</div>
+      <div class="roi-big" id="roi-big">—</div>
+    </div>
+    <div class="roi-meta">
+      <span>Net Revenue <strong id="roi-net">—</strong></span>
+      <span>Ad Spend <strong id="roi-sp">—</strong></span>
+      <span id="roi-status-text" style="font-weight:700;margin-top:4px"></span>
+    </div>
+  </div>
+  <div class="roi-right">
+    <div class="roi-mini">
+      <div class="roi-mini-label" data-tip="Ad Revenue ÷ Ad Spend (attributed purchases only)">ROAS</div>
+      <div class="roi-mini-val" id="roas-mini">—</div>
+    </div>
+    <div class="roi-mini">
+      <div class="roi-mini-label" data-tip="Purchases ÷ Link Clicks × 100%">CVR%</div>
+      <div class="roi-mini-val" id="cvr-mini">—</div>
+    </div>
+    <div class="roi-mini">
+      <div class="roi-mini-label" data-tip="(Returns ÷ Gross Sales) × 100%">Return Rate</div>
+      <div class="roi-mini-val" id="ret-mini">—</div>
+    </div>
+    <div class="roi-mini">
+      <div class="roi-mini-label" data-tip="(Discounts ÷ Gross Sales) × 100%">Disc Rate</div>
+      <div class="roi-mini-val" id="disc-mini">—</div>
+    </div>
+  </div>
+</div>
 
-        const statusMap = {
-            'stage1': { text: '1. 待處理', class: 'status-stage1' },
-            'stage2': { text: '2. 執行中', class: 'status-stage2' },
-            'stage3': { text: '3. 財務審核', class: 'status-stage3' },
-            'stage4': { text: '4. 撥款中', class: 'status-stage4' },
-            'stage5': { text: '5. 已結案', class: 'status-stage5' },
-            'error': { text: '⚠️ 異常', class: 'status-error' }
-        };
+<!-- BUSINESS PERFORMANCE -->
+<div class="sec"><span class="sec-n">Business Performance</span><div class="sec-r"></div></div>
+<div class="tier1">
+  <div class="kcard">
+    <div class="kl" data-tip="Net sales after all discounts and returns (Shopify E column)">Net Revenue (E)</div>
+    <div class="kv ac" id="k-net">—</div>
+    <div class="ks" id="k-net-s">After discounts &amp; returns</div>
+    <div id="k-net-prog"></div> <!-- KPI 進度條 -->
+  </div>
+  <div class="kcard">
+    <div class="kl" data-tip="Total gross sales before any deductions (Shopify B column)">Gross Sales (B)</div>
+    <div class="kv" id="k-gross">—</div>
+    <div class="ks" id="k-gross-s">Gross before deductions</div>
+  </div>
+  <div class="kcard">
+    <div class="kl" data-tip="Total discounts applied (Shopify C column). Shown as positive absolute value.">Discounts (C)</div>
+    <div class="kv" id="k-disc">—</div>
+    <div class="ks" id="k-disc-s"></div>
+  </div>
+  <div class="kcard">
+    <div class="kl" data-tip="Total returned amount (Shopify D column). Shown as positive absolute value.">Returns (D)</div>
+    <div class="kv" id="k-ret">—</div>
+    <div class="ks" id="k-ret-s"></div>
+  </div>
+</div>
 
-        const typeMap = { 
-            'meta_google': '<div class="flex items-center"><span class="w-2 h-2 rounded-full bg-blue-500 mr-2"></span>直投</div>', 
-            'agency': '<div class="flex items-center"><span class="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>代理商</div>', 
-            'io': '<div class="flex items-center"><span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>委刊單</div>' 
-        };
+<!-- AD PERFORMANCE -->
+<div class="sec"><span class="sec-n">Ad Performance</span><div class="sec-r"></div></div>
+<div class="tier3">
+  <div class="kcard">
+    <div class="kl" data-tip="Total Meta + Google ad spend in TWD">Total Spend</div>
+    <div class="kv" id="k-sp">—</div>
+    <div class="ks" id="k-sp-s"></div>
+  </div>
+  <div class="kcard">
+    <div class="kl" data-tip="Ad-attributed revenue ÷ Ad spend. Meta uses purchase conversion value; Google uses purchase value.">ROAS</div>
+    <div class="kv" id="k-roas">—</div>
+    <div class="ks" id="k-roas-s">Ad revenue ÷ Ad spend</div>
+  </div>
+  <div class="kcard">
+    <div class="kl" data-tip="Total purchase conversions counted by Meta + Google pixels">Purchases</div>
+    <div class="kv" id="k-purch">—</div>
+    <div class="ks" id="k-purch-s">Meta + Google conversions</div>
+  </div>
+  <div class="kcard">
+    <div class="kl" data-tip="Total link clicks tracked by Meta + Google">Link Clicks</div>
+    <div class="kv" id="k-clk">—</div>
+    <div class="ks" id="k-clk-s">Meta + Google</div>
+  </div>
+  <div class="kcard">
+    <div class="kl" data-tip="Purchases ÷ Link Clicks × 100%. How many clicks convert to a purchase.">CVR%</div>
+    <div class="kv" id="k-cvr">—</div>
+    <div class="ks" id="k-cvr-s"></div>
+  </div>
+  <div class="kcard">
+    <div class="kl" data-tip="Meta: CTR = Link Clicks ÷ Impressions × 100%. Google: CTR = Clicks ÷ Impressions × 100%. Weighted average across both platforms.">CTR% (Meta+Google)</div>
+    <div class="kv" id="k-ctr">—</div>
+    <div class="ks" id="k-ctr-s">Clicks ÷ Impressions</div>
+  </div>
+  <div class="kcard">
+    <div class="kl" data-tip="Average cost per click = Total Spend ÷ Total Clicks (Meta + Google combined)">CPC (avg)</div>
+    <div class="kv" id="k-cpc">—</div>
+    <div class="ks" id="k-cpc-s">Spend ÷ Clicks</div>
+  </div>
+  <div class="kcard">
+    <div class="kl" data-tip="Total ad impressions served across Meta + Google">Impressions</div>
+    <div class="kv" id="k-impr">—</div>
+    <div class="ks" id="k-impr-s">Meta + Google</div>
+  </div>
+  <div class="kcard">
+    <div class="kl" data-tip="Meta spend as % of total ad spend">Meta Spend</div>
+    <div class="kv" id="k-ms">—</div>
+    <div class="ks" id="k-ms-s"></div>
+  </div>
+  <div class="kcard">
+    <div class="kl" data-tip="Google spend as % of total ad spend">Google Spend</div>
+    <div class="kv" id="k-gs">—</div>
+    <div class="ks" id="k-gs-s"></div>
+  </div>
+  <div class="kcard">
+    <div class="kl" data-tip="Add to Cart events tracked by Meta pixel">Add to Cart</div>
+    <div class="kv" id="k-atc">—</div>
+    <div class="ks" id="k-atc-s">Meta tracked</div>
+  </div>
+  <div class="kcard">
+    <div class="kl" data-tip="Meta spend ÷ Total spend vs Google spend ÷ Total spend">Channel Split</div>
+    <div class="kv" id="k-split">—</div>
+    <div class="ks" id="k-split-s">Meta / Google</div>
+  </div>
+</div>
 
-        async function fetchDashboardData() {
-            try {
-                const response = await fetch(GAS_URL);
-                const data = await response.json();
-                renderTable(data);
-                updateStats(data);
-                document.getElementById('sync-status').innerHTML = `<i class="fas fa-check-circle mr-1 text-green-500"></i> 最後同步：${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
-            } catch (err) { 
-                document.getElementById('sync-status').innerText = '同步失敗'; 
-            }
+<!-- CHARTS ROW 1 -->
+<div class="sec"><span class="sec-n">Trends</span><div class="sec-r"></div></div>
+<div class="row2">
+  <div class="card">
+    <div class="ct">
+      <span class="ct-n" data-tip="ROI = Net Revenue ÷ Ad Spend. X-axis adjusts to selected period.">Spend &amp; ROI Trend</span>
+      <span class="ct-b g" id="trend-badge">7 days</span>
+    </div>
+    <!-- 強制綁定圖例色碼 -->
+    <div class="legr">
+      <div class="leg"><div class="leg-line" style="background-color:#3b82f6 !important"></div>Spend (TWD)</div>
+      <div class="leg"><div class="leg-sq" style="background-color:#0f3a5e !important; border-radius:50%"></div>ROI</div>
+    </div>
+    <div class="cw" style="height:220px"><canvas id="trendC" role="img" aria-label="Spend and ROI trend"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="ct">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="ct-n" data-tip="Performance for selected brand(s). Can switch between ROI and ROAS.">Performance by Brand</span>
+        <!-- ROI / ROAS 切換選項 -->
+        <div class="dim-toggle" style="margin-bottom:0">
+          <button class="dim-btn on" id="btn-met-roi" onclick="setBrandMetric('roi')" style="padding:4px 12px;font-size:11px">ROI</button>
+          <button class="dim-btn" id="btn-met-roas" onclick="setBrandMetric('roas')" style="padding:4px 12px;font-size:11px">ROAS</button>
+        </div>
+      </div>
+      <span class="ct-b g" id="roi-brand-badge">7 days</span>
+    </div>
+    <div class="roi-list" id="roi-bars"></div>
+    <div class="sum-row" id="roi-sum"></div>
+  </div>
+</div>
+
+<!-- CHARTS ROW 2 -->
+<div class="row3">
+  <div class="card">
+    <div class="ct">
+      <span class="ct-n" data-tip="Net Revenue (after discounts &amp; returns) stacked by selected brand(s). X-axis matches selected period.">Net Revenue by Brand</span>
+      <span class="ct-b n" id="rev-period-badge">dynamic</span>
+    </div>
+    <div class="cw" style="height:220px"><canvas id="stackC" role="img" aria-label="Net revenue by brand"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="ct">
+      <span class="ct-n" data-tip="Meta vs Google ad spend for selected brand(s). X-axis matches selected period.">Ad Spend by Channel</span>
+      <span class="ct-b n" id="spend-period-badge">dynamic</span>
+    </div>
+    <!-- 強制綁定圖例色碼 -->
+    <div class="legr">
+      <div class="leg"><div class="leg-sq" style="background-color:#0f3a5e !important"></div>Meta</div>
+      <div class="leg"><div class="leg-sq" style="background-color:#3b82f6 !important"></div>Google</div>
+    </div>
+    <div class="cw" style="height:220px"><canvas id="spendC" role="img" aria-label="Ad spend by channel"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="ct">
+      <span class="ct-n" data-tip="ROI (Net Revenue ÷ Ad Spend) for each selected brand over time. Color intensity = ROI level. Green = good (&gt;5×), amber = review (2–5×), red = stop (&lt;2×).">ROI Heatmap</span>
+      <span class="ct-b n">brand × period</span>
+    </div>
+    <div id="heat-table" style="overflow-x:auto;max-height:240px;-webkit-overflow-scrolling:touch;"></div>
+    <div class="sum-row" id="heat-sum"></div>
+  </div>
+</div>
+
+<!-- TABLE -->
+<div class="sec"><span class="sec-n">Brand Breakdown</span><div class="sec-r"></div></div>
+<div class="card">
+  <div class="ct" style="margin-bottom:16px;">
+    <span class="ct-n">Full KPI Table — click header to sort</span>
+    <span class="ct-b g" id="tbl-badge">7 days</span>
+  </div>
+  <div class="dim-toggle">
+    <button class="dim-btn on" onclick="setDim('brand',this)">By Brand</button>
+    <button class="dim-btn" onclick="setDim('day',this)">By Day</button>
+  </div>
+  <div class="sum-row" id="tbl-sum" style="margin-top:0;margin-bottom:16px;padding-top:0;border-top:none;border-bottom:1px solid var(--rule);padding-bottom:16px"></div>
+  <div class="tbl-wrap">
+    <table id="main-table">
+      <thead id="tbl-head"></thead>
+      <tbody id="tbl-body"></tbody>
+      <tfoot id="tbl-foot"></tfoot>
+    </table>
+  </div>
+</div>
+
+</main>
+
+<footer>
+  <span class="ft-c">© Emers Group · Ad &amp; Revenue Report</span>
+  <span class="ft-t" id="footer-ts">—</span>
+</footer>
+
+<!-- SETTINGS MODAL (Data Sources) -->
+<div id="settings-modal" class="modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">⚙️ Data Source Settings (Sheet IDs)</span>
+      <button class="modal-close" onclick="closeSettings()">×</button>
+    </div>
+    <div class="modal-content">
+      <div class="form-group">
+        <label>Meta Ads Sheet ID <span class="tag tm" style="font-size:9px">Tab: metaads_by_brand_contry</span></label>
+        <input type="text" id="inp-meta" placeholder="e.g., 16XYjr0e7MwAyCdJ...">
+      </div>
+      <div class="form-group">
+        <label>Google Ads Sheet ID <span class="tag tg" style="font-size:9px">Tab: gads_by+brand_contry</span></label>
+        <input type="text" id="inp-gads" placeholder="e.g., 16XYjr0e7MwAyCdJ...">
+      </div>
+      <div class="form-group">
+        <label>Shopify Sales Sheet ID <span class="tag tok" style="font-size:9px">Tab: all+brand+sale</span></label>
+        <input type="text" id="inp-sales" placeholder="e.g., 16XYjr0e7MwAyCdJ...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeSettings()" style="color:var(--ink)">Cancel</button>
+      <button class="btn pri" onclick="saveSettings()">Save &amp; Sync</button>
+    </div>
+  </div>
+</div>
+
+<!-- KPI 設定模組 (依月份儲存) -->
+<div id="kpi-modal" class="modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">🎯 當月 KPI 目標設定</span>
+      <button class="modal-close" onclick="closeKpiSettings()">×</button>
+    </div>
+    <div class="modal-content" style="padding-top:16px;">
+      <div style="margin-bottom:16px; padding-bottom:16px; border-bottom:1px dashed var(--rule2); display:flex; align-items:center; gap:12px;">
+        <label style="font-size:13px; font-weight:700; color:var(--accent)">選擇設定月份</label>
+        <input type="month" id="kpi-month-selector" onchange="changeKpiMonth()" style="padding:8px 12px; border:1px solid var(--rule2); border-radius:var(--r); font-family:inherit; font-size:14px; outline:none; font-weight:600;">
+      </div>
+      <div id="kpi-form-content"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeKpiSettings()" style="color:var(--ink)">取消</button>
+      <button class="btn pri" onclick="saveKpiSettings()">儲存 KPI 設定</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- Chart.js 全局 Tooltip 強制深色設定 ---
+Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+Chart.defaults.plugins.tooltip.titleColor = '#ffffff';
+Chart.defaults.plugins.tooltip.bodyColor = '#ffffff';
+Chart.defaults.plugins.tooltip.padding = 12;
+Chart.defaults.plugins.tooltip.cornerRadius = 8;
+Chart.defaults.plugins.tooltip.displayColors = true;
+
+const BRANDS=['Descente','ASH GOLF','G/FORE','Callaway','2XU HK','2XU TW','K-SWISS','Palladium'];
+const KNOWN_COUNTRIES = ['TW', 'HK', 'SG', 'MY'];
+const BCOLORS=['#0f3a5e','#185a90','#2b7bc4','#3b82f6','#60a5fa','#93c5fd','#bae6fd','#e0f2fe'];
+
+let CONFIG = {
+  metaId: localStorage.getItem('emers_meta_id') || '16XYjr0e7MwAyCdJ-pXb-IxzUtU7hw0BCmAcNd0v1CPE',
+  gadsId: localStorage.getItem('emers_gads_id') || '16XYjr0e7MwAyCdJ-pXb-IxzUtU7hw0BCmAcNd0v1CPE',
+  salesId: localStorage.getItem('emers_sales_id') || '16XYjr0e7MwAyCdJ-pXb-IxzUtU7hw0BCmAcNd0v1CPE'
+};
+
+// --- KPI 儲存初始化 ---
+const DEFAULT_KPI = {};
+BRANDS.forEach(b => DEFAULT_KPI[b] = { rev: 1000000, roi: 5 });
+
+let KPI_DATA = JSON.parse(localStorage.getItem('emers_kpis_v2'));
+if (!KPI_DATA) {
+    KPI_DATA = {};
+    const d = new Date();
+    const currM = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const oldKpi = JSON.parse(localStorage.getItem('emers_kpis'));
+    if (oldKpi) KPI_DATA[currM] = oldKpi;
+    else KPI_DATA[currM] = DEFAULT_KPI;
+    localStorage.setItem('emers_kpis_v2', JSON.stringify(KPI_DATA));
+}
+
+function getMonthKpi(monthStr) {
+    return KPI_DATA[monthStr] || DEFAULT_KPI;
+}
+
+let RAW={meta:[],gads:[],sales:[]};
+let brandToCountries={};
+let countryToBrands={};
+
+// 注意：F.brand 與 F.country 為陣列型態，實作多選與聯動機制
+let F={brand:['all'],country:['all'],dateFrom:'',dateTo:'',comparePrev:false};
+let charts={},timer=null,sortKey='roi',sortDir=-1,dimMode='brand';
+window.brandMetric = 'roi'; 
+
+const $=id=>document.getElementById(id);
+const getLocalD=(d)=>{const x=new Date(d); x.setMinutes(x.getMinutes()-x.getTimezoneOffset()); return x.toISOString().slice(0,10);};
+const today=()=>getLocalD(new Date());
+const daysAgo=n=>{const d=new Date();d.setDate(d.getDate()-n);return getLocalD(d);};
+
+// Format helpers
+function fmtN(n){if(n===null||n===undefined||isNaN(n))return'—';return'$'+Math.round(Math.abs(n)).toLocaleString();}
+function fmtI(n){if(n===null||n===undefined||isNaN(n))return'—';return Math.round(Math.abs(n)).toLocaleString();}
+function fmtR(n,d=2){if(n===null||n===undefined||isNaN(n))return'—';return n.toFixed(d)+'×';}
+function fmtP(n){if(n===null||n===undefined||isNaN(n))return'—';return n.toFixed(2)+'%';}
+function showStatus(t,m){const el=$("sbar");el.className=t;el.textContent=m;}
+
+function normDate(raw){
+  if(!raw)return null;
+  const s=String(raw).trim();
+  if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);
+  const a=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(a)return`${a[3]}-${a[1].padStart(2,'0')}-${a[2].padStart(2,'0')}`;
+  const b=s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+  if(b)return`${b[1]}-${b[2].padStart(2,'0')}-${b[3].padStart(2,'0')}`;
+  try{const d=new Date(s);if(!isNaN(d.getTime()))return d.toISOString().slice(0,10);}catch(e){}
+  return null;
+}
+
+/* UI Filters & Data Linking (防呆與多選機制) */
+function updateChips() {
+  document.querySelectorAll('#market-filters .chip').forEach(el => {
+    const val = el.dataset.c;
+    if (F.country.includes('all')) el.classList.toggle('on', val === 'all');
+    else el.classList.toggle('on', F.country.includes(val));
+  });
+  document.querySelectorAll('#brand-filters .chip').forEach(el => {
+    const val = el.dataset.b;
+    if (F.brand.includes('all')) el.classList.toggle('on', val === 'all');
+    else el.classList.toggle('on', F.brand.includes(val));
+  });
+}
+
+function toggleB(b) {
+  if (b === 'all') {
+    F.brand = ['all'];
+    F.country = ['all'];
+  } else {
+    if (F.brand.includes('all')) F.brand = [];
+    if (F.brand.includes(b)) F.brand = F.brand.filter(x => x !== b);
+    else F.brand.push(b);
+
+    if (F.brand.length === 0) {
+      F.brand = ['all'];
+      F.country = ['all'];
+    } else {
+      let validC = new Set();
+      F.brand.forEach(brand => {
+        (brandToCountries[brand] || []).forEach(c => validC.add(c));
+      });
+      if (F.country.includes('all')) {
+        F.country = Array.from(validC);
+      } else {
+        F.country = F.country.filter(c => validC.has(c));
+        if (F.country.length === 0) F.country = Array.from(validC);
+      }
+    }
+  }
+  updateChips();
+  if(RAW.meta.length) render();
+}
+
+function toggleC(c) {
+  if (c === 'all') {
+    F.country = ['all'];
+    F.brand = ['all'];
+  } else {
+    if (F.country.includes('all')) F.country = [];
+    
+    // 強制聯動：MY 與 SG 作為同一戰區共同開關
+    const isMySg = c === 'MY' || c === 'SG';
+    if (isMySg) {
+      const hasEither = F.country.includes('MY') || F.country.includes('SG');
+      if (hasEither) { // 如果已經有任一個，表示這次點擊是要把它們關掉
+        F.country = F.country.filter(x => x !== 'MY' && x !== 'SG');
+      } else { // 把它們一起打開
+        F.country.push('MY', 'SG');
+      }
+    } else {
+      // 一般國家的常規開關
+      if (F.country.includes(c)) F.country = F.country.filter(x => x !== c);
+      else F.country.push(c);
+    }
+
+    if (F.country.length === 0) {
+      F.country = ['all'];
+      F.brand = ['all'];
+    } else {
+      let validB = new Set();
+      F.country.forEach(country => {
+        (countryToBrands[country] || []).forEach(b => validB.add(b));
+      });
+      if (F.brand.includes('all')) {
+        F.brand = Array.from(validB);
+      } else {
+        F.brand = F.brand.filter(b => validB.has(b));
+        if (F.brand.length === 0) F.brand = Array.from(validB);
+      }
+    }
+  }
+  updateChips();
+  if(RAW.meta.length) render();
+}
+
+function setTime(t,el){
+  document.querySelectorAll('[data-t]').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  $('cr').classList.toggle('show',t==='custom');
+  
+  if(t==='custom') {
+      $('dt').value=today(); 
+      return;
+  }
+  if (t === 'thisMonth') {
+      const d = new Date();
+      F.dateFrom = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+      F.dateTo = d.getDate() === 1 ? today() : daysAgo(1);
+  } else {
+      F.dateFrom = daysAgo(parseInt(t));
+      F.dateTo = daysAgo(1);
+  }
+  if(RAW.meta.length||RAW.sales.length)render();
+}
+function applyCustom(){
+  F.dateFrom=$('df').value;F.dateTo=$('dt').value;
+  if(F.dateFrom&&F.dateTo&&(RAW.meta.length||RAW.sales.length))render();
+}
+function setDim(d,el){dimMode=d;document.querySelectorAll('.dim-btn').forEach(x=>x.classList.remove('on'));el.classList.add('on');render();}
+function setCompare(val){F.comparePrev=val;if(RAW.meta.length)render();}
+function setBrandMetric(m){
+  window.brandMetric = m;
+  $('btn-met-roi').classList.remove('on');
+  $('btn-met-roas').classList.remove('on');
+  $('btn-met-'+m).classList.add('on');
+  if(RAW.meta.length)render();
+}
+
+/* Fetch + Parse */
+async function fetchCsv(url){
+  const bustUrl = url + '&_t=' + Date.now();
+  try{const r=await fetch(bustUrl,{mode:'cors', cache:'no-store'});if(r.ok)return await r.text();}catch(e){}
+  try{const r=await fetch('https://api.allorigins.win/get?disableCache=true&url='+encodeURIComponent(bustUrl));if(r.ok){const j=await r.json();if(j?.contents)return j.contents;}}catch(e){}
+  try{const r=await fetch('https://corsproxy.io/?'+encodeURIComponent(bustUrl));if(r.ok)return await r.text();}catch(e){}
+  throw new Error('All CORS proxies failed');
+}
+function csv(url){return fetchCsv(url).then(t=>Papa.parse(t,{header:true,skipEmptyLines:true}).data);}
+function kf(row,...pts){const keys=Object.keys(row);for(const p of pts){const k=keys.find(k=>new RegExp(p,'i').test(k));if(k)return k;}return pts[pts.length-1];}
+
+// 標準化國家代碼 (支援中文和英文完整名稱)
+function normalizeCountry(rawCountry) {
+  if (!rawCountry) return '';
+  
+  // 字典全部改用小寫 key
+  const countryMap = {
+    'taiwan': 'TW',
+    '台灣': 'TW',
+    'hong kong': 'HK',
+    'hongkong': 'HK',
+    '香港': 'HK',
+    'macao': 'HK',  
+    'macau': 'HK',
+    '澳門': 'HK',
+    'singapore': 'SG',
+    '新加坡': 'SG',
+    'malaysia': 'MY',
+    '馬來西亞': 'MY'
+  };
+  
+  const normalized = rawCountry.trim().toUpperCase();
+  if (['TW', 'HK', 'SG', 'MY'].includes(normalized)) return normalized;
+  
+  // 統一轉小寫查表
+  return countryMap[rawCountry.trim().toLowerCase()] || normalized;
+}
+
+// 依品牌推斷預設國家（用於空值回補）
+function inferCountryByBrand(brand) {
+  if (['Descente', 'G/FORE', 'Callaway', '2XU TW', 'ASH GOLF'].includes(brand)) {
+    return 'TW';
+  } else if (brand === '2XU HK') {
+    return 'HK';
+  } else if (['K-SWISS', 'Palladium'].includes(brand)) {
+    return 'MY+SG';
+  }
+  return '';
+}
+
+function parseMeta(rows){
+  if(!rows.length)return[];
+  const R=rows[0],K={media:kf(R,'媒體','media'),brand:kf(R,'^品牌$','brand'),country:kf(R,'國家','country'),
+    date:kf(R,'天數','分析報告開始','date'),spend:kf(R,'花費金額','spend','cost'),
+    rev:kf(R,'購買轉換值','revenue','value'),clicks:kf(R,'連結點擊','link.click','clicks'),
+    purch:kf(R,'購買次數','purchases'),cpc:kf(R,'CPC','單次點擊'),
+    ctr:kf(R,'CTR','點閱率'),impr:kf(R,'曝光次數','impressions'),atc:kf(R,'加到購物車','add.to.cart')};
+    
+  return rows.filter(r=>/meta/i.test(r[K.media]||'')).map(r=>{
+    const date=normDate(r[K.date]);
+    const brand=(r[K.brand]||'').trim();
+    
+    // 讀取並標準化國家欄位
+    let rawC = (r[K.country]||'').trim();
+    rawC = normalizeCountry(rawC);
+    
+    // 若欄位為空，依品牌回補
+    if (!rawC) {
+      rawC = inferCountryByBrand(brand);
+    }
+    
+    const spend=parseFloat(String(r[K.spend]||'0').replace(/,/g,''))||0;
+    const clicks=parseFloat(String(r[K.clicks]||'0').replace(/,/g,''))||0;
+    const impr=parseFloat(String(r[K.impr]||'0').replace(/,/g,''))||0;
+    const ctr_raw=parseFloat(String(r[K.ctr]||'0').replace(/,/g,''))||0;
+    const ctr=impr>0?(clicks/impr*100):ctr_raw;
+    return{brand,country:rawC,
+      date,month:date?date.slice(0,7):null,spend,rev:parseFloat(String(r[K.rev]||'0').replace(/,/g,''))||0,
+      clicks,purchases:parseFloat(String(r[K.purch]||'0').replace(/,/g,''))||0,
+      cpc:parseFloat(String(r[K.cpc]||'0').replace(/,/g,''))||0,ctr,impr,atc:parseFloat(String(r[K.atc]||'0').replace(/,/g,''))||0};
+  }).filter(r=>r.date&&r.brand);
+}
+
+function parseGads(rows){
+  if(!rows.length)return[];
+  const R=rows[0],K={media:kf(R,'媒體','media'),brand:kf(R,'^品牌$','brand'),country:kf(R,'國家','country'),
+    date:kf(R,'^日期$','^date$'),spend:kf(R,'費用','cost','spend'),rev:kf(R,'購買價值','purchase.value','revenue'),
+    clicks:kf(R,'^點擊$','^clicks$'),purch:kf(R,'^購買$','^purchases$'),
+    ctr:kf(R,'點閱率','ctr'),impr:kf(R,'^曝光$','impressions')};
+    
+  return rows.filter(r=>/google/i.test(r[K.media]||'')).map(r=>{
+    const date=normDate(r[K.date]);
+    const brand=(r[K.brand]||'').trim();
+    
+    // 讀取並標準化國家欄位
+    let rawC = (r[K.country]||'').trim();
+    rawC = normalizeCountry(rawC);
+    
+    // 若欄位為空，依品牌回補
+    if (!rawC) {
+      rawC = inferCountryByBrand(brand);
+    }
+    
+    const spend=parseFloat(String(r[K.spend]||'0').replace(/,/g,''))||0;
+    const clicks=parseFloat(String(r[K.clicks]||'0').replace(/,/g,''))||0;
+    const impr=parseFloat(String(r[K.impr]||'0').replace(/,/g,''))||0;
+    const ctr_raw=parseFloat(String(r[K.ctr]||'0').replace(/,/g,''))||0;
+    const ctr=impr>0?(clicks/impr*100):(ctr_raw*100);
+    
+    return{brand,country:rawC,countries:rawC.includes('+')?rawC.split('+'):[rawC],
+      date,month:date?date.slice(0,7):null,spend,rev:parseFloat(String(r[K.rev]||'0').replace(/,/g,''))||0,
+      clicks,purchases:parseFloat(String(r[K.purch]||'0').replace(/,/g,''))||0,
+      cpc:clicks>0?spend/clicks:0,ctr,impr};
+  }).filter(r=>r.date&&r.brand);
+}
+
+function parseSales(rows){
+  if(!rows.length)return[];
+  const R=rows[0],K={brand:kf(R,'^品牌$','brand'),date:kf(R,'日期','A \\(日期\\)','date'),
+    gross:kf(R,'B \\(銷售總額\\)','銷售總額','gross'),disc:kf(R,'C \\(折扣\\)','折扣','discount'),
+    ret:kf(R,'D \\(退貨金額\\)','退貨','return'),net:kf(R,'E \\(銷貨淨額\\)','銷貨淨額','net'),
+    country:kf(R,'國家','country')};
+    
+  return rows.map(r=>{
+    const date=normDate(r[K.date]);
+    const brand = (r[K.brand]||'').trim();
+    
+    // 第一優先：讀取 country 欄位並標準化
+    let rawC = (r[K.country]||'').trim();
+    rawC = normalizeCountry(rawC);
+    
+    // 第二優先：若欄位為空，依品牌回補（向下相容舊資料）
+    if (!rawC) {
+      rawC = inferCountryByBrand(brand);
+    }
+    
+    return{brand,
+      country:rawC, 
+      countries: rawC.includes('+') ? rawC.split('+') : [rawC],
+      date,month:date?date.slice(0,7):null,
+      gross:parseFloat(String(r[K.gross]||'0').replace(/,/g,''))||0,
+      disc:parseFloat(String(r[K.disc]||'0').replace(/,/g,''))||0,
+      ret:parseFloat(String(r[K.ret]||'0').replace(/,/g,''))||0,
+      net:parseFloat(String(r[K.net]||'0').replace(/,/g,''))||0};
+  }).filter(r=>r.date&&r.brand);
+}
+
+/* Aggregate Engine */
+function aggData(dFrom, dTo){
+  const inD=r=>r.date>=dFrom&&r.date<=dTo;
+  
+  const inB=r=>F.brand.includes('all')||F.brand.includes(r.brand);
+  const inCm=r=>F.country.includes('all')||F.country.includes(r.country);
+  const inCg=r=>F.country.includes('all')||(r.countries?r.countries.some(c=>F.country.includes(c)):F.country.includes(r.country));
+  
+  // 修正 inCs 判斷邏輯，相容回補的 countries 陣列
+  const inCs=r=>F.country.includes('all')||(r.countries?r.countries.some(c=>F.country.includes(c)):F.country.includes(r.country));
+
+  const meta=RAW.meta.filter(r=>inD(r)&&inB(r)&&inCm(r));
+  const gads=RAW.gads.filter(r=>inD(r)&&inB(r)&&inCg(r));
+  const sales=RAW.sales.filter(r=>inD(r)&&inB(r)&&inCs(r)); 
+  
+  const targetBrands=F.brand.includes('all')?BRANDS:F.brand;
+
+  let ms=meta.reduce((s,r)=>s+r.spend,0), gs=gads.reduce((s,r)=>s+r.spend,0), sp=ms+gs;
+  let mr=meta.reduce((s,r)=>s+r.rev,0), gr=gads.reduce((s,r)=>s+r.rev,0);
+  let gross=sales.reduce((s,r)=>s+r.gross,0), disc=sales.reduce((s,r)=>s+r.disc,0);
+  let ret=sales.reduce((s,r)=>s+r.ret,0), net=sales.reduce((s,r)=>s+r.net,0);
+  let clicks=meta.reduce((s,r)=>s+r.clicks,0)+gads.reduce((s,r)=>s+r.clicks,0);
+  let purch=meta.reduce((s,r)=>s+r.purchases,0)+gads.reduce((s,r)=>s+r.purchases,0);
+  let impr=meta.reduce((s,r)=>s+r.impr,0)+gads.reduce((s,r)=>s+r.impr,0);
+  let atc=meta.reduce((s,r)=>s+r.atc,0);
+  
+  let ctr=impr>0?clicks/impr*100:0;
+  let cpc=clicks>0?sp/clicks:0;
+  let cvr=clicks>0?purch/clicks*100:0;
+  let roi=sp>0?net/sp:0;
+  let roas=sp>0?(mr+gr)/sp:0;
+
+  // Brand dimension
+  const brandRows=targetBrands.map(bn=>{
+    const bm=meta.filter(r=>r.brand===bn);
+    const bg=gads.filter(r=>r.brand===bn);
+    const bs=sales.filter(r=>r.brand===bn);
+    const bms=bm.reduce((s,r)=>s+r.spend,0),bgs=bg.reduce((s,r)=>s+r.spend,0),bsp=bms+bgs;
+    const bmr=bm.reduce((s,r)=>s+r.rev,0),bgr=bg.reduce((s,r)=>s+r.rev,0);
+    const bg2=bs.reduce((s,r)=>s+r.gross,0),bd=bs.reduce((s,r)=>s+r.disc,0);
+    const br=bs.reduce((s,r)=>s+r.ret,0),bn2=bs.reduce((s,r)=>s+r.net,0);
+    const bclk=bm.reduce((s,r)=>s+r.clicks,0)+bg.reduce((s,r)=>s+r.clicks,0);
+    const bpch=bm.reduce((s,r)=>s+r.purchases,0)+bg.reduce((s,r)=>s+r.purchases,0);
+    const bimpr=bm.reduce((s,r)=>s+r.impr,0)+bg.reduce((s,r)=>s+r.impr,0);
+    const bdates=new Set([...bm.map(r=>r.date),...bg.map(r=>r.date),...bs.map(r=>r.date)]);
+
+    return{brand:bn,days:bdates.size,ms:bms,gs:bgs,sp:bsp,
+      gross:bg2,
+      disc:bd,
+      ret:br,
+      net:bn2,
+      disc_pct:bg2===0?0:Math.abs((bd/bg2)*100),
+      ret_pct:bg2===0?0:Math.abs((br/bg2)*100),
+      clicks:bclk,
+      purchases:bpch,
+      cpc:bclk>0?bsp/bclk:0,ctr:bimpr>0?bclk/bimpr*100:0,
+      cvr:bclk>0?bpch/bclk*100:0,
+      atc:bm.reduce((s,r)=>s+r.atc,0),impr:bimpr,
+      roi:bsp>0?bn2/bsp:0,
+      roas:bsp>0?(bmr+bgr)/bsp:0};
+  });
+
+  // Daily dimension
+  const dayMap={};
+  const allDates=new Set([...meta.map(r=>r.date),...gads.map(r=>r.date),...sales.map(r=>r.date)]);
+  allDates.forEach(dt=>{
+    const dm=meta.filter(r=>r.date===dt), dg=gads.filter(r=>r.date===dt), ds=sales.filter(r=>r.date===dt);
+    const dms=dm.reduce((s,r)=>s+r.spend,0),dgs=dg.reduce((s,r)=>s+r.spend,0),dsp=dms+dgs;
+    const dmr=dm.reduce((s,r)=>s+r.rev,0),dgr=dg.reduce((s,r)=>s+r.rev,0);
+    const dnet=ds.reduce((s,r)=>s+r.net,0), dclk=dm.reduce((s,r)=>s+r.clicks,0)+dg.reduce((s,r)=>s+r.clicks,0);
+    const dpch=dm.reduce((s,r)=>s+r.purchases,0)+dg.reduce((s,r)=>s+r.purchases,0);
+    const dimpr=dm.reduce((s,r)=>s+r.impr,0)+dg.reduce((s,r)=>s+r.impr,0);
+    dayMap[dt]={date:dt,ms:dms,gs:dgs,sp:dsp,mr:dmr,gr:dgr,net:dnet,
+      gross:ds.reduce((s,r)=>s+r.gross,0),disc:ds.reduce((s,r)=>s+r.disc,0),ret:ds.reduce((s,r)=>s+r.ret,0),
+      clicks:dclk,purchases:dpch,impr:dimpr,ctr:dimpr>0?dclk/dimpr*100:0,cvr:dclk>0?dpch/dclk*100:0,
+      cpc:dclk>0?dsp/dclk:0,roi:dsp>0?dnet/dsp:0,roas:dsp>0?(dmr+dgr)/dsp:0};
+  });
+  const dayRows=Object.values(dayMap).sort((a,b2)=>a.date<b2.date?-1:1);
+
+  // Time-series buckets
+  const dayCount=(new Date(dTo)-new Date(dFrom))/(86400000)+1;
+  const tsBuckets={}, bBuckets={};
+  targetBrands.forEach(bn=>bBuckets[bn]={});
+
+  const getBucketKey = dt => {
+    if(dayCount<=31) return dt; 
+    const d = new Date(dt);
+    const day = d.getDay() || 7; 
+    d.setDate(d.getDate() - (day - 1)); 
+    return getLocalD(d); 
+  };
+
+  const processTS = (arr, isSales) => {
+    arr.forEach(r=>{
+      const bk=getBucketKey(r.date);
+      if(!tsBuckets[bk]) tsBuckets[bk]={spend:0,net:0,ms:0,gs:0};
+      if(!bBuckets[r.brand][bk]) bBuckets[r.brand][bk]={spend:0,net:0,ms:0,gs:0};
+      
+      if(isSales){
+        tsBuckets[bk].net+=r.net; bBuckets[r.brand][bk].net+=r.net;
+      } else {
+        const amt=r.spend; tsBuckets[bk].spend+=amt; bBuckets[r.brand][bk].spend+=amt;
+        if(r.media||r.atc!==undefined){tsBuckets[bk].ms+=amt;bBuckets[r.brand][bk].ms+=amt;}
+        else{tsBuckets[bk].gs+=amt;bBuckets[r.brand][bk].gs+=amt;}
+      }
+    });
+  };
+  processTS(sales, true); processTS(meta, false); processTS(gads, false);
+
+  const tsKeys=Object.keys(tsBuckets).sort();
+  const tsSeries=tsKeys.map(k=>({
+    label: dayCount<=31 ? k.slice(5).replace('-','/') : k.slice(5).replace('-','/') + '週',
+    spend: tsBuckets[k].spend, net: tsBuckets[k].net,
+    ms: tsBuckets[k].ms, gs: tsBuckets[k].gs, roi: tsBuckets[k].spend>0?tsBuckets[k].net/tsBuckets[k].spend:0
+  }));
+
+  const bStack={}, heat=[];
+  targetBrands.forEach(bn=>{
+    bStack[bn]=tsKeys.map(k=>{
+      return bBuckets[bn][k]?Math.round(bBuckets[bn][k].net):0;
+    });
+    heat.push({brand:bn, vals:tsKeys.map(k=>{
+      const b=bBuckets[bn][k]; return (b&&b.spend>0)?b.net/b.spend:null;
+    })});
+  });
+
+  return{sp,ms,gs,roi,roas,gross,disc,ret,net,clicks,purch,cpc,ctr,cvr,impr,atc,
+    brandRows,dayRows,tsSeries,tsKeys,bStack,heat,dayCount,targetBrands};
+}
+
+function periodLabel(){
+  if($('cr').classList.contains('show'))return`${F.dateFrom} – ${F.dateTo}`;
+  const a=document.querySelector('[data-t].on');
+  const t=a?.dataset.t||'7';
+  if (t === '1') return 'Yesterday';
+  if (t === 'thisMonth') return 'This Month';
+  return `Last ${t} days`;
+}
+
+// Diff renderer helper
+function renderVal(id, currV, prevV, fmtFn, colorMode=1){
+  const el=$(id); if(!el)return;
+  if (currV === null) {
+      el.innerHTML = '—';
+      return;
+  }
+  let html = fmtFn(currV);
+  if (F.comparePrev && prevV!==null && prevV!==undefined) {
+      const diff = currV - prevV;
+      if (Math.abs(diff) >= 0.0001) {
+          const sign = diff > 0 ? '↑' : '↓';
+          let cls = 'nt';
+          if(colorMode === 1) cls = diff > 0 ? 'up' : 'dn';
+          else if(colorMode === -1) cls = diff > 0 ? 'dn' : 'up';
+          html += `<span class="${cls}" style="font-size:12px;margin-left:8px;font-weight:700">${sign} ${fmtFn(Math.abs(diff))}</span>`;
+      } else {
+          html += `<span class="nt" style="font-size:12px;margin-left:8px;font-weight:600">—</span>`;
+      }
+  }
+  el.innerHTML = html;
+}
+
+/* RENDER */
+function render(){
+  const d = aggData(F.dateFrom, F.dateTo);
+  let p = null;
+  if(F.comparePrev){
+    const d1=new Date(F.dateFrom), d2=new Date(F.dateTo);
+    const diffMs=d2.getTime()-d1.getTime();
+    const pToD=new Date(d1.getTime()-86400000);
+    const pFromD=new Date(pToD.getTime()-diffMs);
+    p = aggData(pFromD.toISOString().slice(0,10), pToD.toISOString().slice(0,10));
+  }
+  
+  // 動態防呆提示列處理（已移除 K-SWISS 提示）
+  let warnings = [];
+  
+  const warnBar = $('dynamic-warning-bar');
+  if (warnBar) {
+      if (warnings.length > 0) {
+          warnBar.innerHTML = warnings.join('<br>');
+          warnBar.style.display = 'block';
+      } else {
+          warnBar.style.display = 'none';
+      }
+  }
+
+  const isSingleMonth = F.dateFrom && F.dateTo && (F.dateFrom.substring(0,7) === F.dateTo.substring(0,7));
+  const monthKey = F.dateFrom ? F.dateFrom.substring(0,7) : '';
+  const currentMonthKpi = getMonthKpi(monthKey);
+
+  const yearStr = F.dateFrom ? parseInt(F.dateFrom.slice(0,4)) : 0;
+  const monthStr = F.dateFrom ? parseInt(F.dateFrom.slice(5,7)) : 0;
+  const monthDays = isSingleMonth ? new Date(yearStr, monthStr, 0).getDate() : 30;
+
+  const pl=periodLabel();
+  $('trend-badge').textContent=pl; $('roi-brand-badge').textContent=pl; $('tbl-badge').textContent=pl;
+  $('rev-period-badge').textContent=pl;  
+  $('spend-period-badge').textContent=d.dayCount<=31?'daily':'weekly';
+
+  // ROI HERO
+  let roiHtml = (d.roi!==null && d.roi>0) ? d.roi.toFixed(2)+'×' : '—';
+  if(p && d.roi!==null && p.roi!==null){
+    const rDiff=d.roi-p.roi;
+    if(Math.abs(rDiff)>0.001){
+      const cls=rDiff>0?'up':'dn', sign=rDiff>0?'↑':'↓';
+      roiHtml+=`<span class="${cls}" style="font-size:24px;margin-left:14px;font-weight:500;">${sign} ${Math.abs(rDiff).toFixed(2)}×</span>`;
+    }
+  }
+  $('roi-big').innerHTML=roiHtml;
+  $('roi-big').className='roi-big'+(d.roi>=5?'':d.roi>=2?' warn':' bad');
+  
+  if (d.roi === null) {
+      $('roi-status-text').textContent = 'Cross-border Ad Only';
+      $('roi-status-text').style.color = 'var(--ink4)';
+  } else {
+      $('roi-status-text').textContent=d.roi>=5?'Healthy ROI':d.roi>=2?'Needs Review':d.roi>0?'Critical Action Required':'';
+      $('roi-status-text').style.color=d.roi>=5?'var(--ok)':d.roi>=2?'var(--warn)':'var(--red)';
+  }
+
+  renderVal('roi-net', d.net, p?.net, fmtN, 1);
+  renderVal('roi-sp', d.sp, p?.sp, fmtN, 0);
+  renderVal('roas-mini', d.roas, p?.roas, fmtR, 1);
+  renderVal('cvr-mini', d.cvr, p?.cvr, fmtP, 1);
+  
+  const currRetP = d.gross>0 && d.gross!==null ? Math.abs((d.ret/d.gross)*100) : (d.gross===null ? null : 0);
+  const prevRetP = (p&&p.gross>0)?Math.abs((p.ret/p.gross)*100):null;
+  renderVal('ret-mini', currRetP, prevRetP, fmtP, -1);
+
+  const currDiscP = d.gross>0 && d.gross!==null ? Math.abs((d.disc/d.gross)*100) : (d.gross===null ? null : 0);
+  const prevDiscP = (p&&p.gross>0)?Math.abs((p.disc/p.gross)*100):null;
+  renderVal('disc-mini', currDiscP, prevDiscP, fmtP, -1);
+
+  const getZheText = (pct) => {
+    if (!pct || isNaN(pct) || pct <= 0) return '';
+    const zhe = Math.round(100 - pct);
+    if (zhe >= 100) return ''; 
+    return zhe % 10 === 0 ? (zhe / 10) + '折' : zhe + '折';
+  };
+  const zheTxt = getZheText(currDiscP);
+  if (zheTxt) $('disc-mini').innerHTML += `<span style="font-size:14px;color:var(--ink3);font-weight:600;margin-left:6px">(約 ${zheTxt})</span>`;
+
+  renderVal('k-net', d.net, p?.net, fmtN, 1);
+  renderVal('k-gross', d.gross, p?.gross, fmtN, 1);
+  renderVal('k-disc', d.disc!==null ? Math.abs(d.disc) : null, p&&p.disc!==null?Math.abs(p.disc):null, fmtN, -1);
+  renderVal('k-ret', d.ret!==null ? Math.abs(d.ret) : null, p&&p.ret!==null?Math.abs(p.ret):null, fmtN, -1);
+  renderVal('k-sp', d.sp, p?.sp, fmtN, 0);
+  renderVal('k-roas', d.roas, p?.roas, fmtR, 1);
+  renderVal('k-purch', d.purch, p?.purch, fmtI, 1);
+  renderVal('k-clk', d.clicks, p?.clicks, fmtI, 1);
+  renderVal('k-cvr', d.cvr, p?.cvr, fmtP, 1);
+  renderVal('k-ctr', d.ctr, p?.ctr, fmtP, 1);
+  renderVal('k-cpc', d.cpc, p?.cpc, v=>'$'+v.toFixed(1), -1);
+  renderVal('k-impr', d.impr, p?.impr, fmtI, 1);
+  renderVal('k-ms', d.ms, p?.ms, fmtN, 0);
+  renderVal('k-gs', d.gs, p?.gs, fmtN, 0);
+  renderVal('k-atc', d.atc, p?.atc, fmtI, 1);
+  const mp=d.sp>0?Math.round(d.ms/d.sp*100):0;
+  $('k-split').textContent=d.sp>0?`${mp}% / ${100-mp}%`:'—';
+
+  const setKs=(id, orig)=>$(id).innerHTML=orig + (F.comparePrev?' <span style="color:var(--ink4);font-size:10px">vs 前期</span>':'');
+  setKs('k-net-s', 'After discounts & returns');
+  setKs('k-gross-s', 'Gross before deductions');
+  setKs('k-disc-s', d.gross?`<span class="dn">${fmtP(currDiscP)} of gross ${zheTxt ? `(約 ${zheTxt})` : ''}</span>`:'');
+  setKs('k-ret-s', d.gross?`<span class="dn">${fmtP(currRetP)} of gross</span>`:'');
+  setKs('k-sp-s', `Meta ${fmtN(d.ms)} + Google ${fmtN(d.gs)}`);
+
+  // KPI Progress 與目標智能過濾
+  const netProgWrap = $('k-net-prog');
+  let totKpiRev = 0;
+  
+  const getBrandSalesC = (bn) => {
+      if (['Descente', 'G/FORE', 'Callaway', '2XU TW', 'ASH GOLF'].includes(bn)) return ['TW'];
+      if (bn === '2XU HK') return ['HK'];
+      if (['K-SWISS', 'Palladium'].includes(bn)) return ['MY', 'SG'];
+      return [];
+  };
+
+  const targetBrandsForKpi = F.brand.includes('all') ? BRANDS : F.brand;
+  totKpiRev = targetBrandsForKpi.reduce((sum, bn) => {
+      let valid = true;
+      if (!F.country.includes('all')) {
+          const sc = getBrandSalesC(bn);
+          if (!sc.some(c => F.country.includes(c))) valid = false;
+      }
+      return sum + (valid ? (currentMonthKpi[bn]?.rev || 0) : 0);
+  }, 0);
+
+  if (isSingleMonth && totKpiRev > 0 && d.net !== null) {
+    const overallPct = Math.min(100, (d.net / totKpiRev) * 100);
+    const gap = totKpiRev - d.net;
+    const expectedPct = d.dayCount / monthDays;
+    const pacingRate = d.net / totKpiRev;
+    const isOnTrack = pacingRate >= expectedPct;
+    const trackStatus = isOnTrack ? '✅ 進度達標' : '⚠️ 進度落後';
+    const barCol = isOnTrack ? 'var(--ok)' : 'var(--warn)';
+
+    netProgWrap.innerHTML = `
+      <div class="kpi-prog-wrap"><div class="kpi-prog-fill" style="width:${overallPct}%;background:${barCol}"></div></div>
+      <div class="kpi-prog-text">
+        <span>KPI 差距: $${Math.max(0, gap).toLocaleString()} (達成率 ${overallPct.toFixed(1)}%)</span>
+        <span style="color:${barCol};">${trackStatus}</span>
+      </div>
+    `;
+  } else if (d.net === null) {
+    netProgWrap.innerHTML = `<span style="font-size:11px;color:var(--ink3);margin-top:6px;display:block;">跨境廣告無直接銷售數據比對</span>`;
+  } else {
+    netProgWrap.innerHTML = '';
+  }
+
+  // ROI by Brand
+  const metric = window.brandMetric; 
+  const maxV = Math.max(...d.brandRows.map(b => b[metric] || 0), 0.1);
+  
+  $('roi-bars').innerHTML = [...d.brandRows].sort((a,b2) => (b2[metric]||0) - (a[metric]||0)).map(b => {
+    const val = b[metric];
+    if (val === null) return `<div class="roi-row"><span class="roi-b">${b.brand.length>9?b.brand.slice(0,9)+'…':b.brand}</span><div class="roi-track"><div class="roi-fill" style="width:0%;background:var(--paper3)"></div></div><span class="roi-v" style="color:var(--ink4)">—</span></div>`;
+
+    const pct = Math.round((val / maxV) * 100);
+    const col = val >= 5 ? 'var(--ok)' : val >= 2 ? 'var(--warn)' : 'var(--red)';
+    const vc = val >= 5 ? 'color:var(--ok)' : val >= 2 ? 'color:var(--warn)' : 'color:var(--red)';
+    
+    let diffHtml = '';
+    const pVal = p ? p.brandRows.find(x => x.brand === b.brand)?.[metric] : null;
+    if (F.comparePrev && pVal !== null) {
+      const diff = val - pVal;
+      if (Math.abs(diff) >= 0.01) {
+        const dCls = diff > 0 ? 'up' : 'dn';
+        const dSign = diff > 0 ? '↑' : '↓';
+        diffHtml = `<span class="${dCls}" style="font-size:10px;margin-left:6px;font-weight:700">${dSign}${Math.abs(diff).toFixed(2)}</span>`;
+      }
+    }
+
+    let kpiHtml = '';
+    if (isSingleMonth && metric === 'roi') {
+      const targetRoi = currentMonthKpi[b.brand]?.roi || 0;
+      if (targetRoi > 0) {
+        kpiHtml = val >= targetRoi ? ' <span title="ROI 達標" style="font-size:11px;margin-left:4px">🎯</span>' : ' <span title="ROI 落後" style="font-size:11px;margin-left:4px">⚠️</span>';
+      }
+    }
+
+    return `<div class="roi-row">
+      <span class="roi-b">${b.brand.length>9?b.brand.slice(0,9)+'…':b.brand}${kpiHtml}</span>
+      <div class="roi-track"><div class="roi-fill" style="width:${pct}%;background:${col}"></div></div>
+      <span class="roi-v" style="${vc}">${val>0?val.toFixed(2)+'×':'—'}${diffHtml}</span>
+    </div>`;
+  }).join('');
+  
+  const sortedMetric = [...d.brandRows].filter(b => b.sp > 0 && b[metric] !== null).sort((a,b2) => b2[metric] - a[metric]);
+  const topBrand = sortedMetric[0];
+  const botBrand = sortedMetric[sortedMetric.length - 1];
+  const avgVal = d[metric] || 0;
+  
+  $('roi-sum').innerHTML=`
+    <div class="sum-item">Best <strong>${topBrand?.brand||'—'}</strong> ${topBrand?.[metric]>0?topBrand[metric].toFixed(2)+'×':'—'}</div>
+    <div class="sum-item">Lowest <strong>${botBrand?.brand||'—'}</strong> ${botBrand?.[metric]>0?botBrand[metric].toFixed(2)+'×':'—'}</div>
+    <div class="sum-item">Avg ${metric.toUpperCase()} <strong>${avgVal>0?avgVal.toFixed(2)+'×':'—'}</strong></div>
+  `;
+
+  renderTrend(d.tsSeries);
+  renderStack(d.brandRows, d.targetBrands);
+  renderSpend(d.tsSeries);
+  renderHeat(d.heat, d.tsKeys, d.dayCount);
+  renderTable(d.brandRows, d.dayRows, isSingleMonth, monthDays, d.dayCount, currentMonthKpi);
+}
+
+/* Charts */
+const tc='rgba(30,41,59,.6)',gc='rgba(0,0,0,.04)';
+function dc(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+
+function renderTrend(series){
+  dc('trend');
+  charts.trend=new Chart($('trendC'),{
+    data:{labels:series.map(s=>s.label),datasets:[
+      {type:'bar',label:'Spend (TWD)',data:series.map(s=>Math.round(s.spend)),backgroundColor:'rgba(0,102,204,0.1)',borderRadius:4,yAxisID:'y'},
+      {type:'line',label:'ROI',data:series.map(s=>s.roi!==null?Math.round(s.roi*10)/10:null),borderColor:'#0f3a5e',backgroundColor:'transparent',borderWidth:3,tension:0.4,pointRadius:0,pointHoverRadius:4,yAxisID:'y2',spanGaps:true}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{if(ctx.datasetIndex===0)return' Spend: $'+ctx.raw.toLocaleString();return' ROI: '+ctx.raw.toFixed(1)+'×';}}}},
+      scales:{
+        y:{ticks:{color:tc,font:{size:11},callback:v=>'$'+v.toLocaleString()},grid:{color:gc},position:'left'},
+        y2:{ticks:{color:'#0f3a5e',font:{size:11,weight:700},callback:v=>v.toFixed(1)+'×'},grid:{display:false},position:'right'}
+      }}
+  });
+}
+
+function renderStack(brandRows, targetBrands){
+  dc('stack');
+  const labels = targetBrands;
+  const data = targetBrands.map(bn => {
+    const brand = brandRows.find(b => b.brand === bn);
+    return brand && brand.net !== null ? Math.round(brand.net) : 0;
+  });
+  
+  charts.stack=new Chart($('stackC'),{type:'bar',data:{
+    labels,
+    datasets:[{
+      label:'Net Revenue',
+      data: data,
+      backgroundColor: BCOLORS.slice(0, targetBrands.length),
+      borderRadius:4
+    }]
+  },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' Net Revenue: $'+ctx.raw.toLocaleString()}}},
+      scales:{x:{ticks:{color:tc,font:{size:11}},grid:{display:false}},y:{ticks:{color:tc,font:{size:11},callback:v=>'$'+v.toLocaleString()},grid:{color:gc}}}}});
+}
+
+function renderSpend(series){
+  dc('spend');
+  const labels=series.map(s=>s.label);
+  charts.spend=new Chart($('spendC'),{type:'bar',data:{labels,datasets:[
+    {label:'Meta',data:series.map(s=>Math.round(s.ms)),backgroundColor:'#0f3a5e',borderRadius:4,stack:'s'},
+    {label:'Google',data:series.map(s=>Math.round(s.gs)),backgroundColor:'#3b82f6',borderRadius:4,stack:'s'}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+ctx.dataset.label+': $'+ctx.raw.toLocaleString()}}},
+    scales:{x:{stacked:true,ticks:{color:tc,font:{size:11}},grid:{display:false}},y:{stacked:true,ticks:{color:tc,font:{size:11},callback:v=>'$'+v.toLocaleString()},grid:{color:gc}}}}});
+}
+
+function renderHeat(hd, tsKeys, dayCount){
+  const hc=v=>{
+    if(v===null)return'background:var(--paper);color:var(--ink4)';
+    if(v>=10)return'background:rgba(52,199,89,.2);color:#065f46';
+    if(v>=6)return'background:rgba(52,199,89,.1);color:var(--ok)';
+    if(v>=3)return'background:rgba(255,159,10,.15);color:#b45309';
+    if(v>=1)return'background:rgba(255,159,10,.06);color:var(--warn)';
+    return'background:rgba(255,59,48,.12);color:var(--red)';
+  };
+  const th='padding:12px 10px;color:var(--ink3);text-align:center;border-bottom:1px solid var(--rule2);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;white-space:nowrap;min-width:50px';
+  let h=`<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="${th};text-align:left;position:sticky;left:0;background:#fff;z-index:10;box-shadow: 2px 0 4px rgba(0,0,0,0.02)">Brand</th>`;
+  
+  tsKeys.forEach(k=>{
+    const lbl = dayCount <= 31 ? k.slice(5).replace('-','/') : k.slice(5).replace('-','/') + '週';
+    h+=`<th style="${th}">${lbl}</th>`;
+  });
+  
+  h+='</tr></thead><tbody>';
+  hd.forEach(row=>{
+    h+=`<tr><td style="padding:12px 10px;color:var(--ink);font-weight:700;font-size:12px;white-space:nowrap;position:sticky;left:0;background:#fff;border-right:1px solid var(--rule);z-index:5;box-shadow: 2px 0 4px rgba(0,0,0,0.02)">${row.brand}</td>`;
+    row.vals.forEach(v=>{h+=`<td style="padding:6px 6px;text-align:center;border-bottom:1px solid var(--rule)"><div style="border-radius:6px;${hc(v)};font-family:'DM Mono',monospace;font-weight:600;font-size:12px;padding:6px 0">${v!==null?v.toFixed(1)+'×':'—'}</div></td>`;});
+    h+='</tr>';
+  });
+  $('heat-table').innerHTML=h+'</tbody></table>';
+  
+  const allVals=hd.flatMap(r=>r.vals.filter(v=>v!==null));
+  const avg=allVals.length?allVals.reduce((s,v)=>s+v,0)/allVals.length:0;
+  const best=hd.reduce((b,r)=>{const mx=Math.max(...r.vals.filter(v=>v!==null),-Infinity);return mx>b.val?{brand:r.brand,val:mx}:b;},{brand:'',val:-Infinity});
+  $('heat-sum').innerHTML=`<div class="sum-item">Avg period ROI <strong>${avg>0?avg.toFixed(1)+'×':'—'}</strong></div><div class="sum-item">Best period <strong>${best.val>-Infinity?best.brand+' '+best.val.toFixed(1)+'×':'—'}</strong></div>`;
+}
+
+function renderTable(brandRows, dayRows, isSingleMonth, monthDays, periodDays, currentMonthKpi){
+  const isBrand=dimMode==='brand';
+  const head=$('tbl-head'), tbody=$('tbl-body'), tfoot=$('tbl-foot');
+
+  if(isBrand){
+    head.innerHTML=`<tr>
+      <th onclick="srt('brand')">Brand</th><th onclick="srt('days')">Days</th><th onclick="srt('clicks')">Clicks</th>
+      <th onclick="srt('cpc')">CPC</th><th onclick="srt('ctr')">CTR%</th><th onclick="srt('purchases')">Purchases</th>
+      <th onclick="srt('cvr')">CVR%</th><th onclick="srt('ms')">Meta $</th><th onclick="srt('gs')">Google $</th>
+      <th onclick="srt('sp')">Total Spend</th><th onclick="srt('roi')">ROI</th><th onclick="srt('roas')">ROAS</th>
+      <th onclick="srt('net')">Net Rev (E)</th><th onclick="srt('gross')">Gross (B)</th><th onclick="srt('disc')">Discount (C)</th>
+      <th onclick="srt('disc_pct')">Disc%</th><th onclick="srt('ret')">Returns (D)</th><th onclick="srt('ret_pct')">Ret%</th><th>Status</th>
+    </tr>`;
+    const sorted=[...brandRows].sort((a,b2)=>{
+        const vA = a[sortKey] === null ? -1 : a[sortKey];
+        const vB = b2[sortKey] === null ? -1 : b2[sortKey];
+        return (vA<vB?-1:1)*sortDir;
+    });
+    tbody.innerHTML=sorted.map(b=>{
+      const rv=b.roi!==null ? (b.roi>=5?'var(--ok)':b.roi>=2?'var(--warn)':'var(--red)') : 'var(--ink4)';
+      
+      let statusHtml = '';
+      if (b.net === null) {
+          statusHtml = `<span class="tag tg">跨境前端指標</span>`;
+      } else if (isSingleMonth) {
+        const bKpi = currentMonthKpi[b.brand] || {rev:0, roi:0};
+        if (bKpi.rev > 0 || bKpi.roi > 0) {
+          const expectedPct = periodDays / monthDays;
+          const revOnTrack = (b.net / bKpi.rev) >= expectedPct;
+          const roiOnTrack = b.roi >= bKpi.roi;
+          
+          const revTag = revOnTrack ? 'tok' : 'tbad';
+          const roiTag = roiOnTrack ? 'tok' : 'tbad';
+          
+          statusHtml = `
+            <div style="display:flex;gap:4px;flex-direction:column;align-items:flex-start">
+              <span class="tag ${revTag}" style="font-size:10px;padding:2px 8px">Rev ${revOnTrack?'達標':'落後'}</span>
+              <span class="tag ${roiTag}" style="font-size:10px;padding:2px 8px">ROI ${roiOnTrack?'達標':'落後'}</span>
+            </div>
+          `;
+        } else {
+          statusHtml = `<span class="tag tg">無 KPI</span>`;
         }
+      } else {
+        const rc=b.roi>=5?'tok':b.roi>=2?'twarn':'tbad', rl=b.roi>=5?'Good':b.roi>=2?'Review':'Stop';
+        statusHtml = `<span class="tag ${rc}">${rl}</span>`;
+      }
 
-        function renderTable(data) {
-            const tbody = document.getElementById('table-body');
-            window.dashboardData = [...data].reverse();
+      return`<tr><td style="font-weight:700;color:var(--accent)">${b.brand}</td><td class="num" style="color:var(--ink2)">${b.days}</td>
+        <td class="num">${Math.round(b.clicks).toLocaleString()}</td><td class="num">${b.cpc>0?'$'+b.cpc.toFixed(1):'—'}</td>
+        <td class="num">${b.ctr>0?b.ctr.toFixed(2)+'%':'—'}</td>
+        <td class="num">${b.purchases!==null?Math.round(b.purchases).toLocaleString():'—'}</td>
+        <td class="num">${b.cvr!==null&&b.cvr>0?b.cvr.toFixed(2)+'%':'—'}</td>
+        <td><span class="tag tm">$${Math.round(b.ms).toLocaleString()}</span></td>
+        <td><span class="tag tm" style="background:#f0f7ff">$${Math.round(b.gs).toLocaleString()}</span></td><td class="num" style="font-weight:700;color:var(--accent)">$${Math.round(b.sp).toLocaleString()}</td>
+        <td class="num" style="color:${rv};font-weight:700;font-size:14px;">${b.roi!==null&&b.roi>0?b.roi.toFixed(2)+'×':'—'}</td>
+        <td class="num">${b.roas!==null&&b.roas>0?b.roas.toFixed(2)+'×':'—'}</td>
+        <td class="num" style="font-weight:700;color:var(--ink);font-size:14px;">${b.net!==null?'$'+Math.round(b.net).toLocaleString():'—'}</td>
+        <td class="num">${b.gross!==null?'$'+Math.round(b.gross).toLocaleString():'—'}</td>
+        <td class="num" style="color:var(--warn)">${b.disc!==null?'$'+Math.round(Math.abs(b.disc)).toLocaleString():'—'}</td>
+        <td class="num" style="color:var(--warn)">${b.disc_pct!==null?b.disc_pct.toFixed(2)+'%':'—'}</td>
+        <td class="num" style="color:var(--red)">${b.ret!==null?'$'+Math.round(Math.abs(b.ret)).toLocaleString():'—'}</td>
+        <td class="num" style="color:var(--red)">${b.ret_pct!==null?b.ret_pct.toFixed(2)+'%':'—'}</td>
+        <td>${statusHtml}</td></tr>`;
+    }).join('');
+    
+    const totClicks = brandRows.reduce((s,b)=>s+b.clicks,0);
+    const totPurchases = brandRows.reduce((s,b)=>s+(b.purchases||0),0);
+    const totMs = brandRows.reduce((s,b)=>s+b.ms,0);
+    const totGs = brandRows.reduce((s,b)=>s+b.gs,0);
+    const totSp = brandRows.reduce((s,b)=>s+b.sp,0);
+    const totNet = brandRows.reduce((s,b)=>s+(b.net||0),0);
+    const totGross = brandRows.reduce((s,b)=>s+(b.gross||0),0);
+    const totDisc = brandRows.reduce((s,b)=>s+(b.disc||0),0);
+    const totRet = brandRows.reduce((s,b)=>s+(b.ret||0),0);
+    
+    const totImpr = brandRows.reduce((s,b)=>s+(b.clicks/(b.ctr/100)),0);
+    const avgCpc = totClicks>0 ? totSp/totClicks : 0;
+    const avgCtr = totImpr>0 ? (totClicks/totImpr)*100 : 0;
+    const avgCvr = totClicks>0 ? (totPurchases/totClicks)*100 : 0;
+    const avgRoi = totSp>0 ? totNet/totSp : 0;
+    
+    // --- 【修正】計算 ROAS 總計 ---
+    const totAdRevBrand = brandRows.reduce((s,b)=>s+((b.roas||0)*b.sp),0);
+    const avgRoas = totSp>0 ? totAdRevBrand/totSp : 0;
+    // --------------------------------
+    
+    const avgDiscPct = totGross>0 ? (Math.abs(totDisc)/totGross)*100 : 0;
+    const avgRetPct = totGross>0 ? (Math.abs(totRet)/totGross)*100 : 0;
+    
+    const totRv=avgRoi>=5?'var(--ok)':avgRoi>=2?'var(--warn)':'var(--red)';
+    
+    tfoot.innerHTML=`<tr>
+      <td style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:0.8px">TOTAL</td>
+      <td class="num">${brandRows.length}</td>
+      <td class="num">${Math.round(totClicks).toLocaleString()}</td>
+      <td class="num">${avgCpc>0?'$'+avgCpc.toFixed(1):'—'}</td>
+      <td class="num">${avgCtr>0?avgCtr.toFixed(2)+'%':'—'}</td>
+      <td class="num">${Math.round(totPurchases).toLocaleString()}</td>
+      <td class="num">${avgCvr>0?avgCvr.toFixed(2)+'%':'—'}</td>
+      <td class="num">$${Math.round(totMs).toLocaleString()}</td>
+      <td class="num">$${Math.round(totGs).toLocaleString()}</td>
+      <td class="num">$${Math.round(totSp).toLocaleString()}</td>
+      <td class="num" style="color:${totRv};font-weight:700;font-size:14px;">${avgRoi>0?avgRoi.toFixed(2)+'×':'—'}</td>
+      <td class="num">${avgRoas>0?avgRoas.toFixed(2)+'×':'—'}</td>
+      <td class="num" style="font-size:14px;">$${Math.round(totNet).toLocaleString()}</td>
+      <td class="num">$${Math.round(totGross).toLocaleString()}</td>
+      <td class="num">$${Math.round(Math.abs(totDisc)).toLocaleString()}</td>
+      <td class="num">${avgDiscPct.toFixed(2)}%</td>
+      <td class="num">$${Math.round(Math.abs(totRet)).toLocaleString()}</td>
+      <td class="num">${avgRetPct.toFixed(2)}%</td>
+      <td></td>
+    </tr>`;
+    
+    $('tbl-sum').innerHTML=`<div class="sum-item">Total Net Rev <strong>$${Math.round(brandRows.reduce((s,b)=>s+(b.net||0),0)).toLocaleString()}</strong></div><div class="sum-item">Total Spend <strong>$${Math.round(brandRows.reduce((s,b)=>s+b.sp,0)).toLocaleString()}</strong></div>`;
+  } else {
+    head.innerHTML=`<tr>
+      <th onclick="srtD('date')">Date</th><th onclick="srtD('clicks')">Clicks</th><th onclick="srtD('cpc')">CPC</th>
+      <th onclick="srtD('ctr')">CTR%</th><th onclick="srtD('purchases')">Purchases</th><th onclick="srtD('cvr')">CVR%</th>
+      <th onclick="srtD('ms')">Meta $</th><th onclick="srtD('gs')">Google $</th><th onclick="srtD('sp')">Total Spend</th>
+      <th onclick="srtD('roi')">ROI</th><th onclick="srtD('roas')">ROAS</th><th onclick="srtD('net')">Net Rev (E)</th><th onclick="srtD('gross')">Gross (B)</th>
+    </tr>`;
+    const sortedD=[...dayRows].sort((a,b2)=>{
+        const vA = a[sortKey] === null ? -1 : a[sortKey];
+        const vB = b2[sortKey] === null ? -1 : b2[sortKey];
+        return (vA<vB?-1:1)*sortDir;
+    });
+    tbody.innerHTML=sortedD.map(b=>{
+      const rv=b.roi!==null ? (b.roi>=5?'var(--ok)':b.roi>=2?'var(--warn)':'var(--red)') : 'var(--ink4)';
+      return`<tr><td style="font-weight:600;font-family:'DM Mono',monospace;color:var(--accent)">${b.date}</td>
+        <td class="num">${Math.round(b.clicks).toLocaleString()}</td><td class="num">${b.cpc>0?'$'+b.cpc.toFixed(1):'—'}</td>
+        <td class="num">${b.ctr>0?b.ctr.toFixed(2)+'%':'—'}</td>
+        <td class="num">${b.purchases!==null?Math.round(b.purchases).toLocaleString():'—'}</td>
+        <td class="num">${b.cvr!==null&&b.cvr>0?b.cvr.toFixed(2)+'%':'—'}</td>
+        <td><span class="tag tm">$${Math.round(b.ms).toLocaleString()}</span></td>
+        <td><span class="tag tm" style="background:#f0f7ff">$${Math.round(b.gs).toLocaleString()}</span></td><td class="num" style="font-weight:700;color:var(--accent)">$${Math.round(b.sp).toLocaleString()}</td>
+        <td class="num" style="color:${rv};font-weight:700">${b.roi!==null&&b.roi>0?b.roi.toFixed(2)+'×':'—'}</td>
+        <td class="num">${b.roas!==null&&b.roas>0?b.roas.toFixed(2)+'×':'—'}</td>
+        <td class="num" style="font-weight:700;color:var(--ink)">${b.net!==null?'$'+Math.round(b.net).toLocaleString():'—'}</td>
+        <td class="num">${b.gross!==null?'$'+Math.round(b.gross).toLocaleString():'—'}</td></tr>`;
+    }).join('');
+    
+    const totClicks = dayRows.reduce((s,b)=>s+b.clicks,0);
+    const totPurchases = dayRows.reduce((s,b)=>s+(b.purchases||0),0);
+    const totMs = dayRows.reduce((s,b)=>s+b.ms,0);
+    const totGs = dayRows.reduce((s,b)=>s+b.gs,0);
+    const totSp = dayRows.reduce((s,b)=>s+b.sp,0);
+    const totNet = dayRows.reduce((s,b)=>s+(b.net||0),0);
+    const totGross = dayRows.reduce((s,b)=>s+(b.gross||0),0);
+    
+    const totImpr = dayRows.reduce((s,b)=>s+(b.clicks/(b.ctr/100)),0);
+    const avgCpc = totClicks>0 ? totSp/totClicks : 0;
+    const avgCtr = totImpr>0 ? (totClicks/totImpr)*100 : 0;
+    const avgCvr = totClicks>0 ? (totPurchases/totClicks)*100 : 0;
+    const avgRoi = totSp>0 ? totNet/totSp : 0;
+    
+    // --- 【修正】計算 ROAS 總計 ---
+    const totAdRevDay = dayRows.reduce((s,b)=>s+((b.roas||0)*b.sp),0);
+    const avgRoas = totSp>0 ? totAdRevDay/totSp : 0;
+    // --------------------------------
+    
+    const totRv=avgRoi>=5?'var(--ok)':avgRoi>=2?'var(--warn)':'var(--red)';
+    
+    tfoot.innerHTML=`<tr>
+      <td style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:0.8px">TOTAL</td>
+      <td class="num">${Math.round(totClicks).toLocaleString()}</td>
+      <td class="num">${avgCpc>0?'$'+avgCpc.toFixed(1):'—'}</td>
+      <td class="num">${avgCtr>0?avgCtr.toFixed(2)+'%':'—'}</td>
+      <td class="num">${Math.round(totPurchases).toLocaleString()}</td>
+      <td class="num">${avgCvr>0?avgCvr.toFixed(2)+'%':'—'}</td>
+      <td class="num">$${Math.round(totMs).toLocaleString()}</td>
+      <td class="num">$${Math.round(totGs).toLocaleString()}</td>
+      <td class="num">$${Math.round(totSp).toLocaleString()}</td>
+      <td class="num" style="color:${totRv};font-weight:700">${avgRoi>0?avgRoi.toFixed(2)+'×':'—'}</td>
+      <td class="num">${avgRoas>0?avgRoas.toFixed(2)+'×':'—'}</td>
+      <td class="num">$${Math.round(totNet).toLocaleString()}</td>
+      <td class="num">$${Math.round(totGross).toLocaleString()}</td>
+    </tr>`;
+    
+    $('tbl-sum').innerHTML=`<div class="sum-item">Total days <strong>${dayRows.length}</strong></div><div class="sum-item">Total Net Rev <strong>$${Math.round(dayRows.reduce((s,b)=>s+(b.net||0),0)).toLocaleString()}</strong></div>`;
+  }
+  document.querySelectorAll('#main-table thead th').forEach(th=>th.classList.remove('sa','sd'));
+}
 
-            tbody.innerHTML = window.dashboardData.map((row, index) => {
-                const statusInfo = statusMap[row.status] || { text: row.status, class: 'bg-slate-100' };
-                
-                // 智慧附件解析：僅顯示來自 Google Drive 的連結，移除信件連結的呈現
-                let attachmentHtml = '';
-                if (row.fileUrl && row.fileUrl !== '無附件') {
-                    const urls = row.fileUrl.split(' | ');
-                    // 過濾出雲端硬碟連結
-                    const driveUrls = urls.filter(url => url.includes('drive.google.com'));
-                    
-                    if (driveUrls.length > 0) {
-                        attachmentHtml = driveUrls.map((url, i) => 
-                            `<a href="${url}" target="_blank" class="inline-flex items-center px-2 py-1 rounded bg-red-50 text-red-700 text-[10px] font-bold hover:bg-red-100 transition-colors mr-1 mb-1 border border-red-200">
-                                <i class="fas fa-file-pdf mr-1"></i> 雲端附件 ${i + 1}
-                            </a>`
-                        ).join('');
-                    } else {
-                        attachmentHtml = '<span class="text-slate-300 text-[10px] italic">僅留存於信件 (無雲端檔)</span>';
-                    }
-                }
+function srt(key){if(sortKey===key)sortDir*=-1;else{sortKey=key;sortDir=-1;}render();}
+function srtD(key){if(sortKey===key)sortDir*=-1;else{sortKey=key;sortDir=-1;}render();}
 
-                return `
-                <tr class="group hover:bg-slate-50/80 transition-colors">
-                    <td class="px-6 py-4 text-[11px] text-slate-400 font-medium">${new Date(row.date).toLocaleDateString()}</td>
-                    <td class="px-6 py-4 font-semibold text-slate-600">${typeMap[row.type] || row.type}</td>
-                    <td class="px-6 py-4">
-                        <div class="font-bold text-slate-800">${row.ticketId}</div>
-                        <div class="text-[10px] text-slate-400 mt-0.5">${row.source || '手動建立'}</div>
-                    </td>
-                    <td class="px-6 py-4 font-mono text-xs font-bold text-slate-700">${row.amount || '--'}</td>
-                    <td class="px-6 py-4"><span class="status-badge ${statusInfo.class}">${statusInfo.text}</span></td>
-                    <td class="px-6 py-4">
-                        <div class="flex flex-wrap mb-2">${attachmentHtml}</div>
-                        <div class="notes-container border-l-2 border-slate-100 pl-3 py-1">
-                            ${row.notes || '<span class="text-slate-300 italic">無備註說明</span>'}
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-right">
-                        <button onclick="openEditModal(${index})" class="p-2 text-slate-400 hover:text-blue-600 transition-all">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                    </td>
-                </tr>`;
-            }).join('');
+/* Configuration Modal Actions */
+function openSettings() {
+  $('inp-meta').value = CONFIG.metaId;
+  $('inp-gads').value = CONFIG.gadsId;
+  $('inp-sales').value = CONFIG.salesId;
+  $('settings-modal').classList.add('show');
+}
+function closeSettings() {
+  $('settings-modal').classList.remove('show');
+}
+function saveSettings() {
+  CONFIG.metaId = $('inp-meta').value.trim();
+  CONFIG.gadsId = $('inp-gads').value.trim();
+  CONFIG.salesId = $('inp-sales').value.trim();
+  
+  localStorage.setItem('emers_meta_id', CONFIG.metaId);
+  localStorage.setItem('emers_gads_id', CONFIG.gadsId);
+  localStorage.setItem('emers_sales_id', CONFIG.salesId);
+  
+  closeSettings();
+  loadData();
+}
+
+/* KPI Settings Actions */
+function openKpiSettings() {
+  const isSingleMonth = F.dateFrom && F.dateTo && (F.dateFrom.substring(0,7) === F.dateTo.substring(0,7));
+  const currentM = isSingleMonth ? F.dateFrom.substring(0,7) : new Date().toISOString().substring(0,7);
+  
+  $('kpi-month-selector').value = currentM;
+  renderKpiForm(currentM);
+  $('kpi-modal').classList.add('show');
+}
+
+function changeKpiMonth() {
+  const m = $('kpi-month-selector').value;
+  if (m) renderKpiForm(m);
+}
+
+function renderKpiForm(monthStr) {
+  const mKpi = getMonthKpi(monthStr);
+  let html = '';
+  BRANDS.forEach(b => {
+    const rev = mKpi[b]?.rev || 0;
+    const roi = mKpi[b]?.roi || 0;
+    html += `
+      <div style="border-bottom:1px solid var(--rule); padding-bottom:12px; margin-bottom:12px;">
+        <label style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:8px;display:block">${b}</label>
+        <div style="display:flex;gap:12px;">
+          <div class="form-group" style="flex:1">
+            <label style="font-size:11px;color:var(--ink3)">Net Revenue KPI ($)</label>
+            <input type="number" id="kpi-rev-${b.replace(/[\/ ]/g,'_')}" value="${rev}">
+          </div>
+          <div class="form-group" style="flex:1">
+            <label style="font-size:11px;color:var(--ink3)">ROI KPI (×)</label>
+            <input type="number" step="0.1" id="kpi-roi-${b.replace(/[\/ ]/g,'_')}" value="${roi}">
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  $('kpi-form-content').innerHTML = html;
+}
+
+function closeKpiSettings() {
+  $('kpi-modal').classList.remove('show');
+}
+
+function saveKpiSettings() {
+  const m = $('kpi-month-selector').value;
+  if (!m) return;
+  
+  if (!KPI_DATA[m]) KPI_DATA[m] = {};
+  
+  BRANDS.forEach(b => {
+    KPI_DATA[m][b] = {
+      rev: parseFloat($(`kpi-rev-${b.replace(/[\/ ]/g,'_')}`).value) || 0,
+      roi: parseFloat($(`kpi-roi-${b.replace(/[\/ ]/g,'_')}`).value) || 0
+    };
+  });
+  
+  localStorage.setItem('emers_kpis_v2', JSON.stringify(KPI_DATA));
+  closeKpiSettings();
+  if(RAW.meta.length) render();
+}
+
+/* Load & Data Mapping */
+async function loadData(){
+  showStatus('loading','Syncing Meta, Google & Sales sheets simultaneously...');
+  
+  const urlMeta = `https://docs.google.com/spreadsheets/d/${CONFIG.metaId}/gviz/tq?tqx=out:csv&sheet=metaads_by_brand_contry`;
+  const urlGads = `https://docs.google.com/spreadsheets/d/${CONFIG.gadsId}/gviz/tq?tqx=out:csv&sheet=gads_by+brand_contry`;
+  const urlSales = `https://docs.google.com/spreadsheets/d/${CONFIG.salesId}/gviz/tq?tqx=out:csv&sheet=all+brand+sale`;
+
+  try{
+    const [rM,rG,rS]=await Promise.all([csv(urlMeta),csv(urlGads),csv(urlSales)]);
+    RAW.meta=parseMeta(rM);RAW.gads=parseGads(rG);RAW.sales=parseSales(rS);
+    const total=RAW.meta.length+RAW.gads.length+RAW.sales.length;
+    if(total===0){
+      showStatus('error',`Parsed 0 records. Meta rows: ${rM.length}, Google: ${rG.length}, Sales: ${rS.length}`);
+      return;
+    }
+    
+    // --- 動態建立 Brand <-> Market 關聯表 ---
+    brandToCountries = {};
+    countryToBrands = {};
+    const allData = [...RAW.meta, ...RAW.gads, ...RAW.sales];
+    
+    allData.forEach(r => {
+      if (!r.brand || !r.country) return;
+      const cList = r.countries || [r.country];
+      cList.forEach(c => {
+        if (KNOWN_COUNTRIES.includes(c) && BRANDS.includes(r.brand)) {
+          if (!brandToCountries[r.brand]) brandToCountries[r.brand] = new Set();
+          brandToCountries[r.brand].add(c);
+          
+          if (!countryToBrands[c]) countryToBrands[c] = new Set();
+          countryToBrands[c].add(r.brand);
         }
+      });
+    });
+    
+    for(let b in brandToCountries) brandToCountries[b] = Array.from(brandToCountries[b]);
+    for(let c in countryToBrands) countryToBrands[c] = Array.from(countryToBrands[c]);
+    // ----------------------------------------
+    
+    const now=new Date().toLocaleString('zh-TW');
+    $('last-upd').textContent=now;$('footer-ts').textContent='Last sync  '+now;
+    showStatus('ok',`✅ 成功同步！ Meta表: ${RAW.meta.length} 筆 · Google表: ${RAW.gads.length} 筆 · Sales表: ${RAW.sales.length} 筆`);
+    
+    render();
+    if(timer)clearInterval(timer);timer=setInterval(loadData,5*60*1000);
+  }catch(e){showStatus('error','Load failed: '+e.message);}
+}
 
-        function updateStats(data) {
-            document.getElementById('active-count').innerText = data.filter(d => ['stage1', 'stage2'].includes(d.status)).length;
-            document.getElementById('finance-count').innerText = data.filter(d => d.status === 'stage3').length;
-            document.getElementById('io-count').innerText = data.filter(d => d.type === 'io' && d.status !== 'stage5').length;
-            document.getElementById('done-count').innerText = data.filter(d => d.status === 'stage5').length;
-        }
-
-        // Modal 與 表單邏輯
-        function toggleModal(id) { 
-            const modal = document.getElementById(id);
-            modal.classList.toggle('opacity-0'); 
-            modal.classList.toggle('pointer-events-none'); 
-            document.body.classList.toggle('modal-active'); 
-        }
-
-        function resetAndOpenModal() { 
-            document.getElementById('ops-form').reset(); 
-            document.getElementById('modal-title').innerText = '新增項目'; 
-            removeFile(); 
-            toggleModal('add-modal'); 
-        }
-
-        function openEditModal(index) {
-            const row = window.dashboardData[index];
-            const form = document.getElementById('ops-form');
-            form.elements['type'].value = row.type;
-            form.elements['status'].value = row.status;
-            // 清理系統產生的前綴字
-            form.elements['ticketId'].value = (row.ticketId || '').replace('⚠️ 需手動補齊編號: ', '').replace('自動抓取: ', '');
-            // 將備註帶入編輯區 (排除自動產生的信件連結部分)
-            form.elements['notes'].value = (row.notes || '').split(' | 原始信件：')[0];
-            document.getElementById('modal-title').innerText = '更新進度 / 上傳附件';
-            toggleModal('add-modal');
-        }
-
-        // 檔案處理
-        let currentFile = null; let base64String = "";
-        const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.getElementById('file-input');
-        
-        dropZone.onclick = () => fileInput.click();
-        fileInput.onchange = (e) => { 
-            const file = e.target.files[0]; 
-            if(file) { 
-                currentFile = file; 
-                document.getElementById('file-name').innerText = file.name; 
-                document.getElementById('file-preview').classList.remove('hidden'); 
-                dropZone.classList.add('hidden'); 
-                const reader = new FileReader(); 
-                reader.onload = (ev) => base64String = ev.target.result; 
-                reader.readAsDataURL(file); 
-            } 
-        };
-
-        function removeFile() { currentFile = null; base64String = ""; document.getElementById('file-preview').classList.add('hidden'); dropZone.classList.remove('hidden'); fileInput.value = ""; }
-        document.getElementById('remove-file').onclick = removeFile;
-
-        document.getElementById('ops-form').onsubmit = async function(e) {
-            e.preventDefault();
-            const btn = document.getElementById('submit-btn');
-            btn.disabled = true; btn.innerText = '處理中...';
-            
-            const formData = new FormData(this);
-            const data = Object.fromEntries(formData.entries());
-            if (currentFile && base64String) { 
-                data.fileData = base64String; 
-                data.fileName = currentFile.name; 
-                data.mimeType = currentFile.type; 
-            }
-            try {
-                await fetch(GAS_URL, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
-                    body: new URLSearchParams(data).toString() 
-                });
-                toggleModal('add-modal'); 
-                this.reset(); 
-                removeFile(); 
-                fetchDashboardData(); 
-            } catch (err) { alert('儲存失敗'); }
-            btn.disabled = false; btn.innerText = '儲存變更';
-        };
-
-        window.onload = fetchDashboardData;
-        setInterval(fetchDashboardData, 300000); // 5 分鐘自動刷新
-    </script>
+F.dateFrom=daysAgo(7);F.dateTo=daysAgo(1);
+loadData();
+</script>
 </body>
 </html>
