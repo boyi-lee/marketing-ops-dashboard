@@ -42,7 +42,7 @@ jobs:
         with:
           node-version: '24'
       - name: Test MCP snapshot contract and mocked routes
-        run: cd commerce-planning-os/apps/private-staging/backend && node --test snapshot-contract.test.ts snapshot-routes.test.ts
+        run: cd commerce-planning-os/apps/private-staging/backend && node --test snapshot-contract.test.ts snapshot-routes.test.ts sales-planning-routes.test.ts ../src/planning-engine.test.mjs
       - name: Deny known Shopify writes and token patterns
         run: |
           python - <<'PY'
