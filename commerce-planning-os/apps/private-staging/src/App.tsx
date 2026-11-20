@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { auth, api } from '@appdeploy/client';
 import McpSnapshot from './McpSnapshot';
+import PlanningWorkbench from './PlanningWorkbench';
 import {
   ShieldCheck,
   RefreshCw,
@@ -208,6 +209,7 @@ function App() {
               <span>資料庫持續保存</span>
             </article>
           </section>
+          <PlanningWorkbench />
           <McpSnapshot />
           <section className="panel">
             <div className="paneltop">
