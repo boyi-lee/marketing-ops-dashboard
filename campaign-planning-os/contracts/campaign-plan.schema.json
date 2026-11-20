@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Campaign Plan",
+  "type": "object",
+  "required": [
+    "brand",
+    "target",
+    "actual",
+    "elapsed",
+    "total",
+    "adSpend",
+    "grossMargin",
+    "variableRate"
+  ],
+  "properties": {
+    "brand": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {
+      "type": "number",
+      "minimum": 0
+    },
+    "actual": {
+      "type": "number",
+      "minimum": 0
+    },
+    "elapsed": {
+      "type": "number",
+      "minimum": 0
+    },
+    "total": {
+      "type": "number",
+      "minimum": 1
+    },
+    "adSpend": {
+      "type": "number",
+      "minimum": 0
+    },
+    "grossMargin": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "variableRate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "approved": {
+      "type": "boolean"
+    }
+  }
+}
