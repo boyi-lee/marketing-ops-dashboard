@@ -40,10 +40,12 @@ type State = {
   complete: boolean;
   updatedAt: string;
   status: string;
+  sourceCount?: number;
+  precision?: string;
 };
 const STORE = 'descente_tw';
 const PRIMARY_QUERY = `query ProductPage($cursor: String) {
-  products(first: 10, after: $cursor) {
+  products(first: 30, after: $cursor) {
     pageInfo { hasNextPage endCursor }
     nodes {
       id title vendor productType updatedAt
@@ -63,6 +65,8 @@ const VARIANT_QUERY = `query VariantPage($id: ID!, $cursor: String) {
     }
   }
 }`;
+
+const COUNT_QUERY = `query SourceProductCount { productsCount(limit: null) { count precision } }`;
 
 async function ownerAccess(email: string | undefined) {
   const names = await secrets.listSecretNames();
@@ -205,7 +209,8 @@ export const handler = router({
       if (!(await ownerAccess(ctx.user!.email)))
         return error('Access denied', 403);
       const rows = await db.list<ProductRecord>('commerce_products', {
-        limit: 80,
+        limit: 60,
+        nextToken: ctx.query.nextToken || undefined,
       });
       const values = rows.items
         .filter(p => p.id !== '_schema' && p.store === STORE)
@@ -213,6 +218,7 @@ export const handler = router({
       return json({
         store: STORE,
         products: values,
+        nextToken: rows.nextToken || null,
         hasMoreInView: Boolean(rows.nextToken),
         status: 'partial_catalog_until_reconciled',
       });
@@ -231,6 +237,7 @@ export const handler = router({
         consistent: true,
       });
       const reset = (ctx.body as { reset?: boolean } | null)?.reset === true;
+      if (last?.complete && !reset) return error('Full cursor traversal already completed', 409);
       const cursor = reset ? null : last?.cursor || null;
       try {
         const response = await shopifyQuery(PRIMARY_QUERY, { cursor });
@@ -249,6 +256,9 @@ export const handler = router({
           throw new Error('invalid_product_cursor');
         if (!page.nodes.length && page.pageInfo.hasNextPage)
           throw new Error('empty_partial_page');
+        const source = await shopifyQuery(COUNT_QUERY, {});
+        const count = source.productsCount as { count: number; precision: string } | undefined;
+        if (!count || !Number.isInteger(count.count) || count.count < 0) throw new Error('source_count_unavailable');
         const fetchedAt = new Date().toISOString();
         const records: ProductRecord[] = [];
         for (const product of page.nodes) {
@@ -281,22 +291,25 @@ export const handler = router({
           synced: (reset ? 0 : last?.synced || 0) + records.length,
           complete: !page.pageInfo.hasNextPage,
           updatedAt: fetchedAt,
-          status: 'stored_unreconciled',
+          status: !page.pageInfo.hasNextPage ?
+            (count.precision === 'EXACT' && (reset ? 0 : last?.synced || 0) + records.length === count.count ? 'source_count_matched_pending_audit' : 'source_count_mismatch') : 'partial_sync',
+          sourceCount: count.count,
+          precision: count.precision,
         };
-        // Single page of at most 10 products and checkpoint commit together.
+        // One bounded page of 30 products and checkpoint commit together.
         const updates = [
           db.tx.update(
             'commerce_products',
             records.map(record => ({ id: record.id, record }))
           ),
-          db.tx.update('commerce_sync', [{ id: STORE, record: state }]),
+          db.tx.update('commerce_sync', [{ id: STORE, record: state, if: { cursor: last?.cursor || null } }]),
         ];
         await db.transact(updates);
         return json({
           store: STORE,
           received: records.length,
           state,
-          reconciliation: 'pending_full_source_count',
+          reconciliation: state.status,
         });
       } catch {
         return error(

@@ -19,6 +19,7 @@ type Status = {
     complete: boolean;
     updatedAt: string;
     status: string;
+    sourceCount?: number;
   } | null;
 };
 type Product = {
@@ -39,6 +40,7 @@ function App() {
   const [ready, setReady] = useState(false);
   const [status, setStatus] = useState<Status | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [nextToken, setNextToken] = useState<string | null>(null);
   const [errorText, setErrorText] = useState('');
   const [busy, setBusy] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -50,6 +52,7 @@ function App() {
       if (current.authorized) {
         const rows = await api.get('/api/products');
         setProducts((rows.data.products || []) as Product[]);
+        setNextToken(rows.data.nextToken || null);
       } else {
         setProducts([]);
       }
@@ -173,7 +176,7 @@ function App() {
             </article>
             <article>
               <small>累積同步商品</small>
-              <strong>{status.state?.synced ?? 0}</strong>
+              <strong>{status.state?.synced ?? 0} / {status.state?.sourceCount ?? '待取得'}</strong>
               <span>
                 {status.state?.complete
                   ? '已走訪至最後游標'
@@ -195,8 +198,7 @@ function App() {
               <div>
                 <h2>Shopify 唯讀同步</h2>
                 <p>
-                  每次最多同步 10
-                  件商品，持續保存游標。全量對帳尚未完成時，不顯示為已驗證。
+                  每次最多同步 30 件商品，持續保存游標。全量對帳尚未完成時，不顯示為已驗證。
                 </p>
               </div>
               <button
@@ -220,7 +222,7 @@ function App() {
               </div>
               <div>
                 <span>全量來源對帳</span>
-                <strong>未驗證</strong>
+                <strong>{status.state?.status === 'source_count_matched_pending_audit' ? '筆數符合，待稽核' : '尚未通過'}</strong>
               </div>
             </div>
           </section>
