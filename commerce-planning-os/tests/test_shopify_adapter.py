@@ -43,6 +43,12 @@ class ShopifyAdapterTests(unittest.TestCase):
         self.assertEqual(p["variants"][0]["cost_status"],"not_provided_by_shopify_product_query")
         self.assertNotIn("unit_cost",p["variants"][0])
 
+    def test_same_source_state_same_hash_across_fetch_times(self):
+        first = normalize_product(node(), "tw", "2026-11-20T01:00:00Z")
+        second = normalize_product(node(), "tw", "2026-11-20T09:00:00Z")
+        self.assertEqual(first["payload_hash"], second["payload_hash"])
+        self.assertNotEqual(first["fetched_at"], second["fetched_at"])
+
     def test_paginated_complete_sync(self):
         responses=[page([node(1)],True,"A"),page([node(2)])]
         calls=[]
