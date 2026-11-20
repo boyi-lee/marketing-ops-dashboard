@@ -83,7 +83,8 @@ async function connectionStatus() {
   return {
     ownerConfigured: names.includes('COMMERCE_OWNER_EMAIL'),
     shopifyConfigured:
-      names.includes('COMMERCE_SHOPIFY_READ_TOKEN') &&
+      names.includes('COMMERCE_SHOPIFY_CLIENT_ID') &&
+      names.includes('COMMERCE_SHOPIFY_CLIENT_SECRET') &&
       names.includes('COMMERCE_SHOPIFY_DOMAIN'),
   };
 }
@@ -94,13 +95,65 @@ function safeProductId(gid: string) {
   return 'product_' + match[1];
 }
 
+type CachedToken = { value: string; expiresAt: number };
+let cachedShopifyToken: CachedToken | null = null;
+
+async function getShopifyAccessToken(domain: string) {
+  if (cachedShopifyToken && cachedShopifyToken.expiresAt > Date.now()) {
+    return cachedShopifyToken.value;
+  }
+  const clientId = await secrets.readSecret('COMMERCE_SHOPIFY_CLIENT_ID');
+  const clientSecret = await secrets.readSecret('COMMERCE_SHOPIFY_CLIENT_SECRET');
+  if (!clientId || !clientSecret || domain !== EXPECTED_DOMAIN) {
+    throw new Error('shopify_client_credentials_not_configured');
+  }
+  const params = new URLSearchParams({
+    grant_type: 'client_credentials',
+    client_id: clientId,
+    client_secret: clientSecret,
+  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 18000);
+  try {
+    const response = await fetch(
+      'https://' + EXPECTED_DOMAIN + '/admin/oauth/access_token',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
+        signal: controller.signal,
+      }
+    );
+    if (!response.ok) throw new Error('shopify_oauth_exchange_failed');
+    const data = await response.json() as {
+      access_token?: string;
+      expires_in?: number;
+      scope?: string;
+    };
+    const granted = (data.scope || '').split(',').map(value => value.trim());
+    if (!data.access_token || typeof data.expires_in !== 'number' ||
+        data.expires_in <= 90 || !granted.includes('read_products') ||
+        !granted.includes('read_inventory') ||
+        granted.some(scope => scope.startsWith('write_'))) {
+      throw new Error('shopify_scope_or_expiry_invalid');
+    }
+    cachedShopifyToken = {
+      value: data.access_token,
+      expiresAt: Date.now() + (data.expires_in - 90) * 1000,
+    };
+    return cachedShopifyToken.value;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function shopifyQuery(query: string, variables: Record<string, unknown>) {
   const domain = (await secrets.readSecret('COMMERCE_SHOPIFY_DOMAIN'))
     .trim()
     .toLowerCase();
-  const token = await secrets.readSecret('COMMERCE_SHOPIFY_READ_TOKEN');
   if (domain !== EXPECTED_DOMAIN)
     throw new Error('invalid_shopify_domain');
+  const token = await getShopifyAccessToken(domain);
   const url = 'https://' + domain + '/admin/api/2026-10/graphql.json';
   let lastError = '';
   for (let i = 0; i < 3; i++) {
