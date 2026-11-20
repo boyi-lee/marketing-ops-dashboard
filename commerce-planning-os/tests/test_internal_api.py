@@ -2,6 +2,7 @@ import io
 import json
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"src"))
 from commerce_os.internal_api import create_app
@@ -21,7 +22,7 @@ class PrivateAPI(unittest.TestCase):
         def start(status,headers):
             result["status"]=status
             result["headers"]=dict(headers)
-        with __import__("unittest").mock.patch(
+        with patch(
             "commerce_os.internal_api.inventory_rows",
             return_value=[{"variant_gid":"v1","inventory_quantity":10}]) as patched:
             pieces=self.app({
