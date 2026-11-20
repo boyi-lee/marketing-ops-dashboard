@@ -1,0 +1,34 @@
+name: Commerce OS isolated quality gate
+on:
+  pull_request:
+    paths:
+      - 'commerce-planning-os/**'
+      - '.github/workflows/commerce-os-ci.yml'
+  push:
+    branches:
+      - 'feat/commerce-planning-os-p0'
+    paths:
+      - 'commerce-planning-os/**'
+      - '.github/workflows/commerce-os-ci.yml'
+jobs:
+  unit-and-contract:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check deterministic core tests
+        run: cd commerce-planning-os && python -m unittest discover -s tests -v
+      - name: Ensure no Shopify write routes or credentials
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('commerce-planning-os')
+          source='\n'.join(x.read_text() for x in p.rglob('*.py'))
+          for forbidden in ['productUpdate(', 'inventoryAdjustQuantities(', 'orderEditBegin(', 'shpat_']:
+              assert forbidden not in source, forbidden
+          print('P0 denylist check passed (not a substitute for security review)')
+          PY
