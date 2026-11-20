@@ -81,5 +81,23 @@
       "確認商品、規格、庫存和更新時間，重新整理"
     ],
     "expected": "全量批次成功後才顯示快照與商品；重新整理後保留，未完成匯入不得替換先前版本。"
+  },
+  {
+    "name": "核准管理員使用商品主推工作台",
+    "viewport": "desktop",
+    "covers": [
+      "owner-scoped planning sales save and read",
+      "product planning scenario",
+      "inventory caps and filtering"
+    ],
+    "description": "查閱已對帳銷售與已匯入目錄，輸入規劃條件並計算。",
+    "steps": [
+      "核准管理員登入",
+      "若沒有銷售快照，確認輸入欄位",
+      "已有合法快照時載入商品並計算",
+      "修改需求倍數與目標 ROAS",
+      "確認供應風險清單"
+    ],
+    "expected": "資料不足時不產生試算；合法來源後依庫存與需求重算商品營收及試算預算；未核准帳號不可操作。"
   }
 ]
