@@ -1,0 +1,59 @@
+[
+  {
+    "name": "匿名使用者無法查看商店資料",
+    "sanity": true,
+    "viewport": "desktop",
+    "covers": ["protected dashboard", "anonymous denial", "sign-in entry"],
+    "description": "在未登入情況下，不能看到商店商品，並提供安全登入操作。",
+    "steps": [
+      "在新瀏覽器工作階段開啟網站",
+      "查看登入頁面",
+      "確認沒有商品資料或同步操作"
+    ],
+    "expected": "顯示請先登入測試環境及安全登入按鈕，商店商品表格不會出現。"
+  },
+  {
+    "name": "已登入但未核准的帳號不能讀取商品",
+    "viewport": "desktop",
+    "covers": [
+      "auth validation",
+      "approved-owner restriction",
+      "protected product API"
+    ],
+    "description": "登入本身不足以授予商店資料權限。",
+    "steps": [
+      "以未核准的測試帳號登入",
+      "等待權限檢查",
+      "確認無法查看商品或執行同步"
+    ],
+    "expected": "顯示帳號尚未被核准，不顯示任何商品資料與同步控制。"
+  },
+  {
+    "name": "核准管理員可查看持續保存的商品清單",
+    "viewport": "desktop",
+    "covers": [
+      "authenticated product API",
+      "persistent database",
+      "store-scoped catalog"
+    ],
+    "description": "核准使用者可以查看已同步內容及更新時間。",
+    "steps": [
+      "以已設定的核准管理員帳號登入",
+      "開啟商品資料工作台",
+      "查看同步狀態及已儲存商品"
+    ],
+    "expected": "顯示商店同步狀態，若尚未匯入則顯示明確空狀態；如已有資料則顯示 SKU、售價與庫存。"
+  },
+  {
+    "name": "未配置唯讀憑證時同步功能停用",
+    "viewport": "mobile",
+    "covers": ["Shopify secret readiness", "sync guardrail", "mobile UI"],
+    "description": "在未完成密鑰設定前不得嘗試真實 Shopify 同步。",
+    "steps": [
+      "在核准管理員帳號登入測試環境",
+      "在手機版查看唯讀憑證狀態",
+      "嘗試使用同步下一批"
+    ],
+    "expected": "顯示尚未設定，按鈕無法操作；無任何商品資料被假造。"
+  }
+]
