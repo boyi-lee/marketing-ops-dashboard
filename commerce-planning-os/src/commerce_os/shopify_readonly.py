@@ -26,6 +26,18 @@ query CommerceOSProductPage($first: Int!, $after: String) {
 }
 """.strip()
 
+PRODUCT_VARIANTS_QUERY = """
+query CommerceOSVariantsPage($productId: ID!, $first: Int!, $after: String) {
+  product(id: $productId) {
+    id
+    variants(first: $first, after: $after) {
+      pageInfo { hasNextPage endCursor }
+      nodes { id sku price inventoryQuantity updatedAt }
+    }
+  }
+}
+""".strip()
+
 class SyncContractError(ValueError):
     pass
 
@@ -95,6 +107,56 @@ def normalize_product(node: dict, store_id: str, fetched_at: str) -> dict:
     ).hexdigest()
     return body
 
+def _expand_variants(execute, node: dict, max_variant_pages: int, max_attempts: int) -> dict:
+    """Fetch every nested variant page for one product, preserving all source records."""
+    variants = node.get("variants") or {}
+    info = variants.get("pageInfo") or {}
+    if not info.get("hasNextPage"):
+        return node
+    if not isinstance(variants.get("nodes"), list):
+        raise SyncContractError("missing first variant page")
+    original = list(variants["nodes"])
+    seen_ids = {v.get("id") for v in original}
+    if len(seen_ids) != len(original) or None in seen_ids:
+        raise SyncContractError("duplicate or missing first-page variant")
+    cursor = info.get("endCursor")
+    visited = set()
+    for _ in range(max_variant_pages):
+        if not cursor or cursor in visited:
+            raise SyncContractError("invalid nested variant cursor")
+        visited.add(cursor)
+        variables = {"productId": node.get("id"), "first": 100, "after": cursor}
+        for attempt in range(max_attempts):
+            try:
+                response = execute(PRODUCT_VARIANTS_QUERY, variables)
+                break
+            except ShopifyTransientError:
+                if attempt + 1 == max_attempts:
+                    raise
+        if not isinstance(response, dict) or response.get("errors"):
+            raise SyncContractError("nested variant GraphQL error")
+        product = (response.get("data") or {}).get("product")
+        if not isinstance(product, dict) or product.get("id") != node.get("id"):
+            raise SyncContractError("nested variant product mismatch")
+        chunk = product.get("variants") or {}
+        new_nodes = chunk.get("nodes")
+        if not isinstance(new_nodes, list):
+            raise SyncContractError("missing nested variant nodes")
+        for variant in new_nodes:
+            vid = variant.get("id")
+            if not vid or vid in seen_ids:
+                raise SyncContractError("duplicate nested variant ID")
+            seen_ids.add(vid)
+            original.append(variant)
+        info = chunk.get("pageInfo") or {}
+        if not info.get("hasNextPage"):
+            expanded = dict(node)
+            expanded["variants"] = {"nodes": original, "pageInfo": info}
+            return expanded
+        cursor = info.get("endCursor")
+    raise SyncContractError("nested variant page limit reached")
+
+
 def read_product_pages(
     execute: Callable[[str, dict], dict],
     *,
@@ -103,12 +165,13 @@ def read_product_pages(
     page_size: int = 50,
     max_pages: int = 1000,
     max_attempts: int = 3,
+    max_variant_pages: int = 250,
 ) -> list[dict]:
     """Return validated products only when all pages are complete.
 
     Caller writes as an atomic batch; this function never saves partial results.
     """
-    if not 1 <= page_size <= 100 or max_pages < 1 or max_attempts < 1:
+    if not 1 <= page_size <= 100 or max_pages < 1 or max_attempts < 1 or max_variant_pages < 1:
         raise ValueError("invalid sync settings")
     records = []
     cursor = None
@@ -130,7 +193,8 @@ def read_product_pages(
             raise SyncContractError("missing product page")
         info = page.get("pageInfo") or {}
         for node in page["nodes"]:
-            item = normalize_product(node, store_id, fetched_at)
+            complete = _expand_variants(execute, node, max_variant_pages, max_attempts)
+            item = normalize_product(complete, store_id, fetched_at)
             if item["product_gid"] in product_ids:
                 raise SyncContractError("duplicate product in pagination")
             product_ids.add(item["product_gid"])
