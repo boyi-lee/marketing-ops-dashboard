@@ -3,7 +3,11 @@
     "name": "匿名使用者無法查看商店資料",
     "sanity": true,
     "viewport": "desktop",
-    "covers": ["protected dashboard", "anonymous denial", "sign-in entry"],
+    "covers": [
+      "protected dashboard",
+      "anonymous denial",
+      "sign-in entry"
+    ],
     "description": "在未登入情況下，不能看到商店商品，並提供安全登入操作。",
     "steps": [
       "在新瀏覽器工作階段開啟網站",
@@ -47,7 +51,11 @@
   {
     "name": "未配置唯讀憑證時同步功能停用",
     "viewport": "mobile",
-    "covers": ["Shopify secret readiness", "sync guardrail", "mobile UI"],
+    "covers": [
+      "Shopify secret readiness",
+      "sync guardrail",
+      "mobile UI"
+    ],
     "description": "在未完成密鑰設定前不得嘗試真實 Shopify 同步。",
     "steps": [
       "在核准管理員帳號登入測試環境",
@@ -55,5 +63,23 @@
       "嘗試使用同步下一批"
     ],
     "expected": "顯示尚未設定，按鈕無法操作；無任何商品資料被假造。"
+  },
+  {
+    "name": "核准管理員匯入 MCP 快照並檢視資料",
+    "viewport": "desktop",
+    "covers": [
+      "MCP snapshot import",
+      "page receipt replay",
+      "atomic snapshot publication",
+      "snapshot inventory view"
+    ],
+    "description": "核准管理員可使用本地 JSON 快照，不依賴 Shopify Client Secret。",
+    "steps": [
+      "以核准管理員登入",
+      "確認 MCP 快照上傳欄位與未匯入狀態",
+      "選擇合法測試用快照並完成匯入",
+      "確認商品、規格、庫存和更新時間，重新整理"
+    ],
+    "expected": "全量批次成功後才顯示快照與商品；重新整理後保留，未完成匯入不得替換先前版本。"
   }
 ]
