@@ -38,6 +38,11 @@ jobs:
         run: python -m pip install 'psycopg[binary]>=3.1,<4'
       - name: Run unit, contract and real PostgreSQL integration tests
         run: cd commerce-planning-os && python -m unittest discover -s tests -v
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test MCP snapshot contract and mocked routes
+        run: cd commerce-planning-os/apps/private-staging/backend && node --test snapshot-contract.test.ts snapshot-routes.test.ts
       - name: Deny known Shopify writes and token patterns
         run: |
           python - <<'PY'
