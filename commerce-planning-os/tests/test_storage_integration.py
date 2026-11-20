@@ -29,6 +29,10 @@ class Integration(unittest.TestCase):
         self.db.ingest_fixture(WRITER,"tw",[item(stock=30,ts="2026-11-20T10:00:00Z")])
         self.db.ingest_fixture(WRITER,"tw",[item(stock=1,ts="2026-11-19T10:00:00Z")])
         self.assertEqual(self.db.inventory(WRITER,"tw","2026-12-31")["on_hand"],30)
+    def test_reject_cross_store_ingest(self):
+        with self.assertRaises(DataContractError):
+            self.db.ingest_fixture(WRITER,"tw",[item(store="hk")])
+        self.assertEqual(self.db.inventory(WRITER,"tw","2026-12-31")["on_hand"],0)
     def test_cross_store_rejected(self):
         self.assertEqual(self.api.request("GET","/api/v1/inventory/summary",WRITER,"hk")[0],403)
     def test_reader_cannot_plan(self):
