@@ -1,0 +1,12 @@
+[
+  {
+    "name": "commerce-sync",
+    "cron": "*/5 * * * *",
+    "handler": "commerceSyncCron",
+    "timezone": "Asia/Taipei",
+    "payload": {
+      "store": "descente_tw",
+      "batchSize": 30
+    }
+  }
+]

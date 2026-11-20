@@ -244,54 +244,13 @@ async function initializeTables() {
   ]);
 }
 
-export const handler = router({
-  'GET /api/status': [
-    requireAuth(),
-    async ctx => {
-      const allowed = await ownerAccess(ctx.user!.email);
-      const configured = await connectionStatus();
-      if (!allowed) return json({ authorized: false, configured, state: null });
-      const [state] = await db.get<State>('commerce_sync', [STORE], {
-        consistent: true,
-      });
-      return json({ authorized: true, configured, state: state || null });
-    },
-  ],
-  'GET /api/products': [
-    requireAuth(),
-    async ctx => {
-      if (!(await ownerAccess(ctx.user!.email)))
-        return error('Access denied', 403);
-      const rows = await db.list<ProductRecord>('commerce_products', {
-        limit: 60,
-        nextToken: ctx.query.nextToken || undefined,
-      });
-      const values = rows.items
-        .filter(p => p.id !== '_schema' && p.store === STORE)
-        .slice(0, 60);
-      return json({
-        store: STORE,
-        products: values,
-        nextToken: rows.nextToken || null,
-        hasMoreInView: Boolean(rows.nextToken),
-        status: 'partial_catalog_until_reconciled',
-      });
-    },
-  ],
-  'POST /api/sync': [
-    requireAuth(),
-    async ctx => {
-      if (!(await ownerAccess(ctx.user!.email)))
-        return error('Access denied', 403);
-      const configured = await connectionStatus();
-      if (!configured.shopifyConfigured)
-        return error('Shopify read-only connection not configured', 409);
+
+async function synchronizePage(reset: boolean) {
       await initializeTables();
       const [last] = await db.get<State>('commerce_sync', [STORE], {
         consistent: true,
       });
-      const reset = (ctx.body as { reset?: boolean } | null)?.reset === true;
-      if (last?.complete && !reset) return error('Full cursor traversal already completed', 409);
+      if (last?.complete && !reset) return { alreadyComplete: true, state: last, received: 0 };
       const cursor = reset ? null : last?.cursor || null;
       try {
         const response = await shopifyQuery(PRIMARY_QUERY, { cursor });
@@ -359,18 +318,80 @@ export const handler = router({
           db.tx.update('commerce_sync', [{ id: STORE, record: state, if: { cursor: last?.cursor || null } }]),
         ];
         await db.transact(updates);
-        return json({
+        return {
           store: STORE,
           received: records.length,
           state,
           reconciliation: state.status,
-        });
+        };
       } catch {
-        return error(
-          'Sync rejected or temporary unavailable; checkpoint not advanced',
-          502
-        );
+        throw new Error('sync_page_failed');
+      }
+}
+
+export const handler = router({
+  'GET /api/status': [
+    requireAuth(),
+    async ctx => {
+      const allowed = await ownerAccess(ctx.user!.email);
+      const configured = await connectionStatus();
+      if (!allowed) return json({ authorized: false, configured, state: null });
+      const [state] = await db.get<State>('commerce_sync', [STORE], {
+        consistent: true,
+      });
+      return json({ authorized: true, configured, state: state || null });
+    },
+  ],
+  'GET /api/products': [
+    requireAuth(),
+    async ctx => {
+      if (!(await ownerAccess(ctx.user!.email)))
+        return error('Access denied', 403);
+      const rows = await db.list<ProductRecord>('commerce_products', {
+        limit: 60,
+        nextToken: ctx.query.nextToken || undefined,
+      });
+      const values = rows.items
+        .filter(p => p.id !== '_schema' && p.store === STORE)
+        .slice(0, 60);
+      return json({
+        store: STORE,
+        products: values,
+        nextToken: rows.nextToken || null,
+        hasMoreInView: Boolean(rows.nextToken),
+        status: 'partial_catalog_until_reconciled',
+      });
+    },
+  ],
+  'POST /api/sync': [
+    requireAuth(),
+    async ctx => {
+      if (!(await ownerAccess(ctx.user!.email)))
+        return error('Access denied', 403);
+      const configured = await connectionStatus();
+      if (!configured.shopifyConfigured)
+        return error('Shopify read-only connection not configured', 409);
+      try {
+        return json(await synchronizePage((ctx.body as { reset?: boolean } | null)?.reset === true));
+      } catch {
+        return error('Sync rejected or unavailable; checkpoint unchanged', 502);
       }
     },
   ],
 });
+
+
+/** Background worker: one bounded page per run, no effect until all secure settings exist. */
+export async function commerceSyncCron() {
+  const configured = await connectionStatus();
+  if (!configured.ownerConfigured || !configured.shopifyConfigured) {
+    return { statusCode: 200 };
+  }
+  try {
+    await synchronizePage(false);
+  } catch {
+    // Leave the persistent cursor unchanged; retry at next scheduled invocation.
+    // No secrets or Shopify response bodies are logged.
+  }
+  return { statusCode: 200 };
+}
