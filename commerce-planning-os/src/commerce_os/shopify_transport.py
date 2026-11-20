@@ -10,7 +10,7 @@ import time
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from .shopify_readonly import PRODUCTS_QUERY, ShopifyTransientError, SyncContractError
+from .shopify_readonly import PRODUCTS_QUERY, PRODUCT_VARIANTS_QUERY, ShopifyTransientError, SyncContractError
 
 MYSHOPIFY_DOMAIN = re.compile(r"^[a-z0-9][a-z0-9-]*\.myshopify\.com$")
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
@@ -39,7 +39,7 @@ def graphql_transport(domain, access_token, *, api_version="2026-10",
     endpoint = f"https://{domain}/admin/api/{api_version}/graphql.json"
 
     def execute(query, variables):
-        if query != PRODUCTS_QUERY:
+        if query not in (PRODUCTS_QUERY, PRODUCT_VARIANTS_QUERY):
             raise ShopifyAccessError("operation not allowlisted")
         if not isinstance(variables, dict):
             raise ShopifyAccessError("invalid variables")
