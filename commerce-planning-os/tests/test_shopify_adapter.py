@@ -4,7 +4,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from commerce_os.shopify_readonly import (
-    PRODUCTS_QUERY, SyncContractError, ShopifyTransientError,
+    PRODUCTS_QUERY, PRODUCT_VARIANTS_QUERY, SyncContractError, ShopifyTransientError,
     normalize_product, read_product_pages, reconcile_product_count
 )
 
@@ -94,6 +94,53 @@ class ShopifyAdapterTests(unittest.TestCase):
         with self.assertRaises(ShopifyTransientError):
             read_product_pages(lambda *_:(_ for _ in ()).throw(ShopifyTransientError("busy")),
                 store_id="tw",fetched_at=FETCHED,max_attempts=2)
+
+    def test_nested_variant_pagination_success(self):
+        first = node()
+        first["variants"]["pageInfo"] = {"hasNextPage": True, "endCursor": "variant-A"}
+        later = {"data": {"product": {"id": first["id"], "variants": {
+            "pageInfo": {"hasNextPage": False, "endCursor": None},
+            "nodes": [{"id": "gid://shopify/ProductVariant/900",
+                       "sku": "SKU-900", "price": "900", "inventoryQuantity": 3,
+                       "updatedAt": "2026-11-20T00:00:00Z"}]}}}}
+        calls=[]
+        def execute(query, variables):
+            calls.append(query)
+            return page([first]) if query == PRODUCTS_QUERY else later
+        items=read_product_pages(execute,store_id="tw",fetched_at=FETCHED)
+        self.assertEqual(len(items[0]["variants"]),2)
+        self.assertEqual(calls,[PRODUCTS_QUERY,PRODUCT_VARIANTS_QUERY])
+
+    def test_nested_variant_product_mismatch_denied(self):
+        first = node()
+        first["variants"]["pageInfo"] = {"hasNextPage": True, "endCursor": "variant-A"}
+        def execute(query, variables):
+            if query == PRODUCTS_QUERY:return page([first])
+            return {"data": {"product": {"id": "wrong-product", "variants": {
+                "nodes": [], "pageInfo": {"hasNextPage": False}}}}}
+        with self.assertRaises(SyncContractError):
+            read_product_pages(execute,store_id="tw",fetched_at=FETCHED)
+
+    def test_nested_variant_repeated_cursor_denied(self):
+        first = node()
+        first["variants"]["pageInfo"] = {"hasNextPage": True, "endCursor": "variant-A"}
+        def execute(query, variables):
+            if query == PRODUCTS_QUERY:return page([first])
+            return {"data": {"product": {"id": first["id"], "variants": {
+                "nodes": [], "pageInfo": {"hasNextPage": True, "endCursor": "variant-A"}}}}}
+        with self.assertRaises(SyncContractError):
+            read_product_pages(execute,store_id="tw",fetched_at=FETCHED)
+
+    def test_nested_duplicate_variant_denied(self):
+        first=node()
+        first["variants"]["pageInfo"]={"hasNextPage":True,"endCursor":"variant-A"}
+        def execute(query,variables):
+            if query == PRODUCTS_QUERY:return page([first])
+            return {"data":{"product":{"id":first["id"],"variants":{
+                "nodes":[first["variants"]["nodes"][0]],
+                "pageInfo":{"hasNextPage":False}}}}}
+        with self.assertRaises(SyncContractError):
+            read_product_pages(execute,store_id="tw",fetched_at=FETCHED)
 
     def test_bad_inventory_type(self):
         x=node();x["variants"]["nodes"][0]["inventoryQuantity"]="10"
