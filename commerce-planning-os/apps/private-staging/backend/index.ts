@@ -390,8 +390,9 @@ export async function commerceSyncCron() {
   try {
     await synchronizePage(false);
   } catch {
-    // Leave the persistent cursor unchanged; retry at next scheduled invocation.
-    // No secrets or Shopify response bodies are logged.
+    // Preserve the checkpoint and expose a sanitized scheduler failure.
+    // No secrets, tokens, source data or Shopify response bodies are logged.
+    throw new Error('commerce_sync_failed_checkpoint_preserved');
   }
   return { statusCode: 200 };
 }

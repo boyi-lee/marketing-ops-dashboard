@@ -30,3 +30,23 @@ Required user-side secure configuration:
 
 Do not put credentials in GitHub, chat or source files. External reference:
 https://shopify.dev/docs/apps/build/authentication-authorization/client-credentials-grant
+
+## Background sync and rollback evidence
+
+- Deployment v5 had a scheduled `commerce-sync` cron every five minutes
+  (`Asia/Taipei`), one bounded page of 30 products per invocation.
+- The scheduler remains safely idle until owner/domain/client ID/client secret
+  are securely bound. It must not handle real data without the approved app.
+- Unsuppressed synchronization failures use a sanitized error identifier,
+  retaining the last successful checkpoint and not disclosing secrets.
+- The app-native persistent DB is **not PostgreSQL**; separate PG migration
+  and authenticated network integration are still future gates.
+- Rollback drill was performed: deployed version `1795158947574` (v5)
+  reverted to `1795158652465` (v4) and was restored to v5; both became ready.
+  **Caveat:** cron still appeared enabled when v4 was restored. Treat cron
+  configuration as separately managed and verify/disable when rolling back.
+- Current checked backend revision is later than the rollback-drill version;
+  it marks scheduled synchronization errors rather than silently succeeding.
+- Real full-catalog sync and data reconciliation remain BLOCKED until secret
+  intake and formal source validation; never mark the 6,156 live source
+  products as ingested solely because this code is deployed.
