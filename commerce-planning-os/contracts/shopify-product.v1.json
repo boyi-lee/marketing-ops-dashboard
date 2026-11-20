@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ShopifyProductNormalizedV1",
+  "type": "object",
+  "required": [
+    "store_id",
+    "product_gid",
+    "title",
+    "source_updated_at",
+    "fetched_at",
+    "payload_hash",
+    "variants"
+  ],
+  "properties": {
+    "store_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "product_gid": {
+      "type": "string",
+      "minLength": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fetched_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "payload_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "variants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "variant_gid",
+          "price",
+          "source_updated_at",
+          "cost_status"
+        ],
+        "properties": {
+          "variant_gid": {
+            "type": "string",
+            "minLength": 1
+          },
+          "price": {
+            "type": "string",
+            "pattern": "^\\d+(\\.\\d+)?$"
+          },
+          "source_updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cost_status": {
+            "const": "not_provided_by_shopify_product_query"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

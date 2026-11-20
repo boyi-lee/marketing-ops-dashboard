@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CommerceProductInput",
+  "type": "object",
+  "required": [
+    "store_id",
+    "variant_id",
+    "brand",
+    "currency",
+    "stock_on_hand",
+    "unit_price",
+    "unit_cost",
+    "source_id",
+    "snapshot_at"
+  ],
+  "properties": {
+    "store_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "variant_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brand": {
+      "type": "string",
+      "minLength": 1
+    },
+    "currency": {
+      "const": "TWD"
+    },
+    "stock_on_hand": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "unit_price": {
+      "type": "string",
+      "pattern": "^\\d+(?:\\.\\d+)?$"
+    },
+    "unit_cost": {
+      "type": "string",
+      "pattern": "^\\d+(?:\\.\\d+)?$"
+    },
+    "source_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "snapshot_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": true
+}

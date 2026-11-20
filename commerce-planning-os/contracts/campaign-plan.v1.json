@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CampaignDraftInput",
+  "type": "object",
+  "required": [
+    "target",
+    "baseline",
+    "hypothetical_increment",
+    "snapshot_id",
+    "hypothesis"
+  ],
+  "properties": {
+    "target": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "baseline": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "hypothetical_increment": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "snapshot_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "hypothesis": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

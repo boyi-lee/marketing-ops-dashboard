@@ -1,0 +1,274 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+:root {
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Noto Sans TC',
+    sans-serif;
+  color: #1b303c;
+  background: #f5f8fa;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+.shell {
+  max-width: 1140px;
+  padding: 22px 30px;
+  margin: auto;
+}
+header {
+  padding: 12px 0 25px;
+  border-bottom: 1px solid #dfe5e9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand strong {
+  display: block;
+  font-size: 18px;
+}
+.brand small {
+  display: block;
+  letter-spacing: 1.3px;
+  font-size: 10px;
+  color: #728894;
+  margin-top: 3px;
+}
+.mark {
+  background: #173e46;
+  color: white;
+  padding: 11px;
+  border-radius: 12px;
+}
+.pill {
+  background: #e0efe9;
+  padding: 8px 12px;
+  color: #276550;
+  border-radius: 40px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.intro {
+  padding: 40px 0 25px;
+}
+.eyebrow {
+  color: #52836f;
+  letter-spacing: 2.3px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.intro h1 {
+  font-size: 30px;
+  margin: 9px 0;
+  letter-spacing: -0.6px;
+}
+.intro p:last-child {
+  font-size: 14px;
+  color: #73828b;
+}
+.panel,
+.cards article {
+  background: white;
+  border: 1px solid #e2e8eb;
+  border-radius: 14px;
+  padding: 24px;
+  margin-bottom: 18px;
+  box-shadow: 0 3px 18px rgba(10, 32, 40, 0.025);
+}
+.centered {
+  text-align: center;
+  max-width: 550px;
+  margin: 25px auto;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 10px;
+}
+.centered h2 {
+  font-size: 21px;
+  margin: 8px 0;
+}
+.centered p {
+  color: #6d8390;
+  font-size: 14px;
+}
+.centered svg {
+  color: #618b80;
+}
+button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: #173e46;
+  color: white;
+  border-radius: 9px;
+  padding: 11px 18px;
+  font-weight: 700;
+  font-size: 13px;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.quiet {
+  background: #e7eff0;
+  color: #325860;
+}
+.banner {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  border-radius: 9px;
+  padding: 14px 16px;
+  background: #e8f4ed;
+  border: 1px solid #cae3d6;
+  color: #2b6d51;
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+}
+.cards article {
+  margin: 0 0 18px;
+}
+.cards small {
+  display: block;
+  font-size: 12px;
+  color: #8a9ca5;
+}
+.cards strong {
+  display: block;
+  font-size: 20px;
+  padding: 13px 0;
+}
+.cards span {
+  display: block;
+  font-size: 11px;
+  color: #92a1ab;
+}
+.paneltop {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 14px;
+}
+.paneltop h2 {
+  font-size: 18px;
+  margin: 0 0 7px;
+}
+.paneltop p {
+  font-size: 12px;
+  color: #788d98;
+  margin: 0;
+  max-width: 670px;
+  line-height: 1.6;
+}
+.checks {
+  display: grid;
+  gap: 12px;
+  margin: 25px 0 0;
+}
+.checks div {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #edf0f1;
+  padding: 6px 0 13px;
+  font-size: 13px;
+}
+.checks span {
+  color: #7e9099;
+}
+.checks strong {
+  color: #446a66;
+}
+.empty {
+  padding: 48px 0;
+  color: #8b9ba4;
+  text-align: center;
+  font-size: 13px;
+}
+.tablewrap {
+  overflow-x: auto;
+  margin-top: 20px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+td,
+th {
+  border-bottom: 1px solid #e8edf0;
+  padding: 14px 10px;
+}
+td small {
+  display: block;
+  color: #a0abb2;
+  font-size: 11px;
+  margin-top: 4px;
+}
+th {
+  color: #889aa3;
+  font-size: 11px;
+}
+.error {
+  background: #fff1ed;
+  color: #a04d39;
+  border-radius: 9px;
+  padding: 14px;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  font-size: 13px;
+}
+footer {
+  text-align: center;
+  font-size: 11px;
+  color: #95a6ae;
+  padding: 23px 0;
+}
+@media (max-width: 700px) {
+  .shell {
+    padding: 16px;
+  }
+  .intro h1 {
+    font-size: 24px;
+  }
+  .paneltop {
+    flex-direction: column;
+  }
+  .cards {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .intro {
+    padding: 25px 0;
+  }
+  .brand strong {
+    font-size: 15px;
+  }
+  .pill {
+    font-size: 10px;
+  }
+}
