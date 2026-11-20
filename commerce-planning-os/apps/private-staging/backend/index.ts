@@ -1,4 +1,5 @@
 import { router, json, error, requireAuth, db, secrets } from '@appdeploy/sdk';
+import { snapshotRoutes } from './snapshot-routes.ts';
 
 type Product = {
   id: string;
@@ -330,6 +331,7 @@ async function synchronizePage(reset: boolean) {
 }
 
 export const handler = router({
+  ...snapshotRoutes(ownerAccess),
   'GET /api/status': [
     requireAuth(),
     async ctx => {
