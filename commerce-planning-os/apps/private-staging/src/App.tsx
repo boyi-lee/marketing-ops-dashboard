@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { auth, api } from '@appdeploy/client';
+import McpSnapshot from './McpSnapshot';
 import {
   ShieldCheck,
   RefreshCw,
@@ -150,7 +151,7 @@ function App() {
         <p className="eyebrow">MERCHANDISE DATA FOUNDATION</p>
         <h1>Shopify 商品資料同步工作台</h1>
         <p>
-          真實資料只在通過身分驗證、管理員核准及密鑰設定後，才會經後端唯讀同步。
+          真實資料需通過身分驗證及管理員核准。支援 MCP 快照匯入及可選的唯讀 API 同步。
         </p>
       </section>
       {!ready ? (
@@ -207,6 +208,7 @@ function App() {
               <span>資料庫持續保存</span>
             </article>
           </section>
+          <McpSnapshot />
           <section className="panel">
             <div className="paneltop">
               <div>
