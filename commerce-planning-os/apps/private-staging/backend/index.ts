@@ -44,6 +44,7 @@ type State = {
   precision?: string;
 };
 const STORE = 'descente_tw';
+const EXPECTED_DOMAIN = 'descente-tw.myshopify.com';
 const PRIMARY_QUERY = `query ProductPage($cursor: String) {
   products(first: 30, after: $cursor) {
     pageInfo { hasNextPage endCursor }
@@ -98,7 +99,7 @@ async function shopifyQuery(query: string, variables: Record<string, unknown>) {
     .trim()
     .toLowerCase();
   const token = await secrets.readSecret('COMMERCE_SHOPIFY_READ_TOKEN');
-  if (!/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(domain))
+  if (domain !== EXPECTED_DOMAIN)
     throw new Error('invalid_shopify_domain');
   const url = 'https://' + domain + '/admin/api/2026-10/graphql.json';
   let lastError = '';

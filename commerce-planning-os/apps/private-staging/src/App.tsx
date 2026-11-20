@@ -82,6 +82,20 @@ function App() {
   useEffect(() => {
     if (viewer) void load();
   }, [viewer, load]);
+  const loadMore = async () => {
+    if (!nextToken) return;
+    try {
+      const response = await api.get('/api/products', { params: { nextToken } });
+      const following = (response.data.products || []) as Product[];
+      setProducts(previous => {
+        const ids = new Set(previous.map(item => item.id));
+        return [...previous, ...following.filter(item => !ids.has(item.id))];
+      });
+      setNextToken(response.data.nextToken || null);
+    } catch {
+      setErrorText('無法載入下一頁商品，請重新整理後再試。');
+    }
+  };
   const signIn = async () => {
     setStarting(true);
     setErrorText('');
@@ -265,6 +279,7 @@ function App() {
                     )}
                   </tbody>
                 </table>
+                {nextToken && <button className='quiet' onClick={() => void loadMore()}>載入更多商品</button>}
               </div>
             )}
           </section>
