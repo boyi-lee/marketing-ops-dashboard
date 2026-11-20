@@ -10,8 +10,9 @@ for real merchant data, and NOT production deployed.
   bounded 429/5xx retries and secret stored in server-side environment only.
 - `shopify_readonly.py`: source validation, all-or-nothing paginated pull,
   stable content hash ignoring acquisition timestamp, supplier count check.
-  Product variants with >100 records are deliberately blocked (need nested
-  pagination instead of truncating source data).
+  Product variants with >100 records use product-scoped nested GraphQL
+  pagination with cursor-loop and duplicate-ID checks; page-limit overflow blocks
+  the entire batch instead of silently truncating data.
 - `sync_worker.py`: one-shot read-only full-sync orchestration, optional count
   cross-check, atomic PostgreSQL ingestion, not publicly served.
 - `postgres_store.py`: transactional store-scoped products, variants, source
