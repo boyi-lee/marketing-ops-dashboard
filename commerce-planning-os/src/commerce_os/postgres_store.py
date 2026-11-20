@@ -12,11 +12,16 @@ from pathlib import Path
 
 from .shopify_readonly import SyncContractError
 
-MIGRATION = Path(__file__).resolve().parents[2] / "database" / "migrations" / "001_init.sql"
+MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "database" / "migrations"
 
 def apply_schema(connection):
-    with connection.transaction():
-        connection.execute(MIGRATION.read_text(encoding="utf-8"))
+    """Apply reviewed, idempotent migrations in deterministic filename order."""
+    paths = sorted(MIGRATIONS_DIR.glob("[0-9][0-9][0-9]_*.sql"))
+    if not paths:
+        raise RuntimeError("migration files missing")
+    for migration in paths:
+        with connection.transaction():
+            connection.execute(migration.read_text(encoding="utf-8"))
 
 def put_store(connection, *, store_id, domain, currency):
     if not store_id or not domain or len(currency) != 3:
