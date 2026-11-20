@@ -22,6 +22,8 @@ class PlanningStore:
     def ingest_fixture(self,actor,store,items):
         self.check(actor,store,True)
         normalize_items(items)
+        if any(i["store_id"] != store for i in items):
+            raise DataContractError("store identity mismatch")
         snap=hashlib.sha256(json.dumps({"store":store,"items":items},sort_keys=True).encode()).hexdigest()
         with self.db:
             self.db.execute("INSERT OR IGNORE INTO snapshots VALUES (?,?,?)",(snap,store,json.dumps(items)))
