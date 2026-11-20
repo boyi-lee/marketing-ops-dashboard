@@ -67,10 +67,10 @@ class TransportTests(unittest.TestCase):
         with self.assertRaises(ShopifyTransientError):
             fn(PRODUCTS_QUERY,{})
     def test_graphql_error_blocked(self):
-        fn=graphql_transport("demo.myshopify.com","fixture-secret",opener=lambda *_:Response(b'{"errors":[{"message":"unauthorized"}]}'))
+        fn=graphql_transport("demo.myshopify.com","fixture-secret",opener=lambda *args, **kwargs:Response(b'{"errors":[{"message":"unauthorized"}]}'))
         with self.assertRaises(SyncContractError):
             fn(PRODUCTS_QUERY,{})
     def test_invalid_json_denied(self):
-        fn=graphql_transport("demo.myshopify.com","fixture-secret",opener=lambda *_:Response(b'not-json'))
+        fn=graphql_transport("demo.myshopify.com","fixture-secret",opener=lambda *args, **kwargs:Response(b'not-json'))
         with self.assertRaises(ShopifyAccessError):
             fn(PRODUCTS_QUERY,{})
