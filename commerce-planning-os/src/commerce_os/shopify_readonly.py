@@ -87,8 +87,11 @@ def normalize_product(node: dict, store_id: str, fetched_at: str) -> dict:
         "fetched_at": _timestamp(fetched_at),
         "variants": parsed,
     }
+    # Fetch time is lineage metadata, not part of the source state identity.
+    # Otherwise each polling run creates duplicate snapshots for unchanged data.
+    identity = {k: v for k, v in body.items() if k != "fetched_at"}
     body["payload_hash"] = sha256(
-        json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+        json.dumps(identity, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
     return body
 
